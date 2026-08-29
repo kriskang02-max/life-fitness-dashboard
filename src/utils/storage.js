@@ -158,6 +158,15 @@ export function saveSyncMeta(meta) {
   writeJSON(STORAGE_KEYS.sync_meta, meta)
 }
 
+/** 로컬 데이터 변경 시각 — 클라우드 pull과 충돌 방지용 */
+export function touchLocalModified() {
+  const meta = readSyncMeta()
+  saveSyncMeta({
+    ...meta,
+    local_modified_at: new Date().toISOString(),
+  })
+}
+
 export function exportAllData() {
   return loadAllData()
 }

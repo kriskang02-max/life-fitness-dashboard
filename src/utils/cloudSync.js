@@ -81,6 +81,42 @@ export async function pushToCloud(settings, payload) {
   return gist.updated_at
 }
 
+/** Supabase Realtime — 다른 기기 변경을 즉시 반영 */
+export function subscribeSupabaseSync(settings, onRowChange) {
+  if (settings?.provider !== 'supabase' || !isSyncConfigured(settings)) return null
+
+  const sb = supabaseClient(settings)
+  const syncId = settings.syncId.trim()
+
+  const channel = sb
+    .channel(`dashboard-sync-${syncId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'dashboard_sync',
+        filter: `sync_id=eq.${syncId}`,
+      },
+      (payload) => onRowChange(payload.new),
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'dashboard_sync',
+        filter: `sync_id=eq.${syncId}`,
+      },
+      (payload) => onRowChange(payload.new),
+    )
+    .subscribe()
+
+  return () => {
+    sb.removeChannel(channel)
+  }
+}
+
 export async function createGist(token, syncId) {
   const payload = { syncId, note: 'Life dashboard sync file' }
   const res = await fetch('https://api.github.com/gists', {
@@ -117,4 +153,8 @@ create policy "dashboard_sync_anon_all"
   to anon
   using (true)
   with check (true);
+
+-- Realtime 자동 동기화용 (SQL Editor에서 실행 후, Table Editor에서도 Realtime ON 확인)
+alter table dashboard_sync replica identity full;
+alter publication supabase_realtime add table dashboard_sync;
 `

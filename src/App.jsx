@@ -180,7 +180,6 @@ export default function App() {
         onClose={() => setSyncOpen(false)}
         syncSettings={data.sync_settings}
         onSave={updateSyncSettings}
-        onImport={refresh}
         pullRemote={pullRemote}
         pushRemote={pushRemote}
       />

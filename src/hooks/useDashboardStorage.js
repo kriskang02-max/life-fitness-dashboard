@@ -12,8 +12,31 @@ import {
   readSyncMeta,
   saveSyncMeta,
   importAllData,
+  touchLocalModified,
 } from '../utils/storage'
-import { isSyncConfigured, pullFromCloud, pushToCloud } from '../utils/cloudSync'
+import {
+  isSyncConfigured,
+  pullFromCloud,
+  pushToCloud,
+  subscribeSupabaseSync,
+} from '../utils/cloudSync'
+
+function buildSyncPayload(data) {
+  return {
+    daily_logs: data.daily_logs,
+    weekly_metrics: data.weekly_metrics,
+    routine_presets: data.routine_presets,
+    daily_items_config: data.daily_items_config,
+    goal_settings: data.goal_settings,
+    thought_archive: data.thought_archive,
+  }
+}
+
+function shouldPushToCloud(meta) {
+  if (meta.local_modified_at) return true
+  if (!meta.remote_updated_at) return true
+  return false
+}
 
 export function useDashboardStorage() {
   const [data, setData] = useState(() => loadAllData())
@@ -21,6 +44,8 @@ export function useDashboardStorage() {
   const [syncMessage, setSyncMessage] = useState('')
   const dataRef = useRef(data)
   const syncTimerRef = useRef(null)
+  const lastPushedAtRef = useRef(null)
+  const pushingRef = useRef(false)
 
   dataRef.current = data
 
@@ -33,72 +58,150 @@ export function useDashboardStorage() {
     setData(loadAllData())
   }, [])
 
-  const pullRemote = useCallback(async (silent = false) => {
-    const settings = dataRef.current.sync_settings
+  const applyRemoteIfNewer = useCallback((remote, silent = true) => {
+    if (!remote?.payload) return false
+
+    const meta = readSyncMeta()
+    const remoteTime = new Date(remote.updated_at).getTime()
+    const remoteKnown = meta.remote_updated_at ? new Date(meta.remote_updated_at).getTime() : 0
+    const localMod = meta.local_modified_at ? new Date(meta.local_modified_at).getTime() : 0
+
+    if (remote.updated_at === lastPushedAtRef.current) return false
+    if (remoteTime <= remoteKnown) return false
+
+    if (remoteTime > localMod) {
+      const merged = importAllData(remote.payload)
+      setData(merged)
+      saveSyncMeta({
+        remote_updated_at: remote.updated_at,
+        local_modified_at: null,
+      })
+      if (!silent) {
+        setSyncMessage('클라우드에서 최신 데이터를 불러왔습니다.')
+        setSyncStatus('ok')
+      }
+      return true
+    }
+
+    return false
+  }, [])
+
+  const pushRemote = useCallback(async (payload = dataRef.current, silent = false, force = false) => {
+    const settings = payload.sync_settings
     if (!isSyncConfigured(settings)) return false
+
+    const meta = readSyncMeta()
+    if (!force && !shouldPushToCloud(meta)) return false
+
+    if (pushingRef.current) return false
+
     try {
-      if (!silent) setSyncStatus('syncing')
-      const remote = await pullFromCloud(settings)
-      if (!remote?.payload) {
-        if (!silent) setSyncStatus('ok')
-        return false
+      pushingRef.current = true
+      if (!silent) {
+        setSyncStatus('syncing')
+        setSyncMessage('')
       }
-      const localMeta = readSyncMeta()
-      const remoteTime = new Date(remote.updated_at).getTime()
-      const localTime = localMeta.updated_at ? new Date(localMeta.updated_at).getTime() : 0
-      if (remoteTime > localTime) {
-        const merged = importAllData(remote.payload)
-        setData(merged)
-        saveSyncMeta({ updated_at: remote.updated_at })
-        if (!silent) setSyncMessage('클라우드 데이터를 불러왔습니다.')
+
+      const updated_at = await pushToCloud(settings, buildSyncPayload(payload))
+      lastPushedAtRef.current = updated_at
+      saveSyncMeta({
+        remote_updated_at: updated_at,
+        local_modified_at: null,
+      })
+
+      if (!silent) {
+        setSyncStatus('ok')
+        setSyncMessage('클라우드에 저장되었습니다.')
+      } else {
+        setSyncStatus((s) => (s === 'error' ? s : 'ok'))
       }
-      if (!silent) setSyncStatus('ok')
       return true
     } catch (err) {
       if (!silent) {
         setSyncStatus('error')
-        setSyncMessage(err.message || '동기화 실패')
+        setSyncMessage(err.message || '저장 실패')
       }
       return false
+    } finally {
+      pushingRef.current = false
     }
   }, [])
 
-  const pushRemote = useCallback(async (payload = dataRef.current) => {
-    const settings = payload.sync_settings
-    if (!isSyncConfigured(settings)) return false
+  const pullRemote = useCallback(
+    async (silent = true) => {
+      const settings = dataRef.current.sync_settings
+      if (!isSyncConfigured(settings)) return false
+
+      try {
+        if (!silent) {
+          setSyncStatus('syncing')
+          setSyncMessage('')
+        }
+
+        const remote = await pullFromCloud(settings)
+
+        if (!remote?.payload) {
+          if (!silent) setSyncStatus('ok')
+          return false
+        }
+
+        const applied = applyRemoteIfNewer(remote, silent)
+
+        if (!applied) {
+          const meta = readSyncMeta()
+          const remoteTime = new Date(remote.updated_at).getTime()
+          const localMod = meta.local_modified_at ? new Date(meta.local_modified_at).getTime() : 0
+          if (localMod > remoteTime) {
+            await pushRemote(dataRef.current, silent, true)
+          }
+        }
+
+        if (!silent && !applied) setSyncStatus('ok')
+        return applied
+      } catch (err) {
+        if (!silent) {
+          setSyncStatus('error')
+          setSyncMessage(err.message || '동기화 실패')
+        }
+        return false
+      }
+    },
+    [applyRemoteIfNewer, pushRemote],
+  )
+
+  const runInitialSync = useCallback(async () => {
+    const settings = dataRef.current.sync_settings
+    if (!isSyncConfigured(settings)) return
+
+    setSyncStatus('syncing')
     try {
-      setSyncStatus('syncing')
-      const updated_at = await pushToCloud(settings, {
-        daily_logs: payload.daily_logs,
-        weekly_metrics: payload.weekly_metrics,
-        routine_presets: payload.routine_presets,
-        daily_items_config: payload.daily_items_config,
-        goal_settings: payload.goal_settings,
-        thought_archive: payload.thought_archive,
-      })
-      saveSyncMeta({ updated_at })
+      const remote = await pullFromCloud(settings)
+      if (remote?.payload) {
+        applyRemoteIfNewer(remote, true)
+      }
+      await pushRemote(dataRef.current, true, false)
       setSyncStatus('ok')
-      setSyncMessage('클라우드에 저장되었습니다.')
-      return true
+      setSyncMessage('자동 동기화가 활성화되었습니다.')
     } catch (err) {
       setSyncStatus('error')
-      setSyncMessage(err.message || '저장 실패')
-      return false
+      setSyncMessage(err.message || '동기화 실패')
+      throw err
     }
-  }, [])
+  }, [applyRemoteIfNewer, pushRemote])
 
   const schedulePush = useCallback(() => {
     if (!isSyncConfigured(dataRef.current.sync_settings)) return
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
     syncTimerRef.current = setTimeout(() => {
-      pushRemote(dataRef.current)
-    }, 1500)
+      pushRemote(dataRef.current, true, false)
+    }, 1200)
   }, [pushRemote])
 
   const mutate = useCallback(
     (updater) => {
       setData((prev) => {
         const next = updater(prev)
+        touchLocalModified()
         saveAllData(next)
         schedulePush()
         return next
@@ -107,19 +210,59 @@ export function useDashboardStorage() {
     [schedulePush],
   )
 
+  const syncSettings = data.sync_settings
+  const syncProvider = syncSettings?.provider
+  const syncId = syncSettings?.syncId
+  const supabaseUrl = syncSettings?.supabaseUrl
+  const supabaseAnonKey = syncSettings?.supabaseAnonKey
+  const gistId = syncSettings?.gistId
+
   useEffect(() => {
+    const settings = {
+      provider: syncProvider,
+      syncId,
+      supabaseUrl,
+      supabaseAnonKey,
+      gistId,
+      gistToken: dataRef.current.sync_settings?.gistToken,
+    }
+    if (!isSyncConfigured(settings)) return
+
     pullRemote(true)
+
+    let unsubscribeRealtime = null
+    if (syncProvider === 'supabase') {
+      unsubscribeRealtime = subscribeSupabaseSync(settings, (row) => {
+        if (!row?.payload) return
+        if (row.updated_at === lastPushedAtRef.current) return
+        applyRemoteIfNewer(
+          { payload: row.payload, updated_at: row.updated_at },
+          true,
+        )
+      })
+    }
+
     const onVis = () => {
       if (document.visibilityState === 'visible') pullRemote(true)
     }
     document.addEventListener('visibilitychange', onVis)
-    const interval = setInterval(() => pullRemote(true), 45000)
+
+    const interval = setInterval(() => pullRemote(true), 30000)
+
     return () => {
+      unsubscribeRealtime?.()
       document.removeEventListener('visibilitychange', onVis)
       clearInterval(interval)
-      if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
     }
-  }, [pullRemote])
+  }, [
+    syncProvider,
+    syncId,
+    supabaseUrl,
+    supabaseAnonKey,
+    gistId,
+    pullRemote,
+    applyRemoteIfNewer,
+  ])
 
   useEffect(() => {
     const onStorage = (e) => {
@@ -163,12 +306,15 @@ export function useDashboardStorage() {
     (settings) => {
       saveSyncSettings(settings)
       setData((prev) => ({ ...prev, sync_settings: settings }))
+      if (!isSyncConfigured(settings)) return Promise.resolve()
+      return runInitialSync()
     },
-    [],
+    [runInitialSync],
   )
 
   const replaceAllData = useCallback(
     (newData) => {
+      touchLocalModified()
       applyData(newData)
       schedulePush()
     },
@@ -189,6 +335,7 @@ export function useDashboardStorage() {
     replaceAllData,
     refresh,
     pullRemote,
-    pushRemote,
+    pushRemote: (payload) => pushRemote(payload ?? dataRef.current, false, true),
+    runInitialSync,
   }
 }
