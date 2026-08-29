@@ -66,12 +66,11 @@ export default function SyncSettingsModal({
         <label className="block">
           <span className="text-xs text-zinc-400 mb-1 block">동기화 방식</span>
           <select
-            value={local.provider ?? ''}
-            onChange={(e) => setLocal((p) => ({ ...p, provider: e.target.value || null }))}
-            className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+            value={local.provider ?? 'supabase'}
+            disabled
+            className="w-full px-3 py-2 text-base bg-zinc-800/50 border border-zinc-700 rounded-lg text-zinc-400 cursor-not-allowed"
           >
-            <option value="">사용 안 함 (로컬만)</option>
-            <option value="supabase">Supabase (추천 · 자동 동기화)</option>
+            <option value="supabase">Supabase (자동 동기화)</option>
           </select>
         </label>
 
@@ -87,23 +86,19 @@ export default function SyncSettingsModal({
         </label>
 
         {local.provider === 'supabase' && (
-          <div className="space-y-3 p-3 rounded-lg border border-zinc-800 bg-zinc-900/50">
-            <p className="text-xs text-zinc-500">
-              Supabase URL (Project Settings → Data API) · Publishable key (API Keys)
-            </p>
+          <div className="space-y-3 p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5">
+            <p className="text-xs text-emerald-400">Supabase 연결 정보는 사이트에 고정되어 있습니다.</p>
             <input
               type="url"
               value={local.supabaseUrl}
-              onChange={(e) => setLocal((p) => ({ ...p, supabaseUrl: e.target.value }))}
-              placeholder="https://xxxx.supabase.co"
-              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+              readOnly
+              className="w-full px-3 py-2 text-base bg-zinc-800/50 border border-zinc-700 rounded-lg text-zinc-400 cursor-not-allowed"
             />
             <input
               type="text"
               value={local.supabaseAnonKey}
-              onChange={(e) => setLocal((p) => ({ ...p, supabaseAnonKey: e.target.value }))}
-              placeholder="sb_publishable_... 또는 anon key"
-              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+              readOnly
+              className="w-full px-3 py-2 text-base bg-zinc-800/50 border border-zinc-700 rounded-lg text-zinc-400 cursor-not-allowed"
             />
             <details className="text-xs text-zinc-500">
               <summary className="cursor-pointer text-cyan-400">Supabase 테이블 + Realtime SQL</summary>

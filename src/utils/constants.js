@@ -65,11 +65,16 @@ export const DEFAULT_GOAL_SETTINGS = {
   linkedCheckKey: 'workout',
 }
 
+/** 사이트에 고정된 Supabase 연결 정보 (클라이언트 publishable key) */
+export const BUILTIN_SUPABASE = {
+  provider: 'supabase',
+  supabaseUrl: 'https://xexqckliekutptuksyfy.supabase.co',
+  supabaseAnonKey: 'sb_publishable_PiLnDuZl7Rwfi0Wmt9GkMg_8_lw_5X1',
+  syncId: 'life-fitness-dashboard',
+}
+
 export const DEFAULT_SYNC_SETTINGS = {
-  provider: null,
-  supabaseUrl: '',
-  supabaseAnonKey: '',
-  syncId: '',
+  ...BUILTIN_SUPABASE,
   gistToken: '',
   gistId: '',
 }

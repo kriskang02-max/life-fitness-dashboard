@@ -1,4 +1,4 @@
-import { STORAGE_KEYS, DEFAULT_DAILY_ITEMS_CONFIG, DEFAULT_GOAL_SETTINGS, DEFAULT_SYNC_SETTINGS } from './constants'
+import { STORAGE_KEYS, DEFAULT_DAILY_ITEMS_CONFIG, DEFAULT_GOAL_SETTINGS, DEFAULT_SYNC_SETTINGS, BUILTIN_SUPABASE } from './constants'
 import { formatDateKey } from './dates'
 
 function generateMockDailyLogs() {
@@ -63,6 +63,17 @@ export function normalizeDailyItemsConfig(raw) {
   return base
 }
 
+export function normalizeSyncSettings(raw) {
+  const merged = { ...DEFAULT_SYNC_SETTINGS, ...(raw ?? {}) }
+  return {
+    ...merged,
+    provider: BUILTIN_SUPABASE.provider,
+    supabaseUrl: BUILTIN_SUPABASE.supabaseUrl,
+    supabaseAnonKey: BUILTIN_SUPABASE.supabaseAnonKey,
+    syncId: merged.syncId || BUILTIN_SUPABASE.syncId,
+  }
+}
+
 export function getDefaultData() {
   return {
     daily_logs: generateMockDailyLogs(),
@@ -71,7 +82,7 @@ export function getDefaultData() {
     daily_items_config: normalizeDailyItemsConfig(null),
     goal_settings: { ...DEFAULT_GOAL_SETTINGS },
     thought_archive: [...DEFAULT_THOUGHT_ARCHIVE],
-    sync_settings: { ...DEFAULT_SYNC_SETTINGS },
+    sync_settings: normalizeSyncSettings(null),
   }
 }
 
@@ -108,7 +119,7 @@ export function loadAllData() {
     daily_items_config: normalizeDailyItemsConfig(readJSON(STORAGE_KEYS.daily_items_config, null)),
     goal_settings: { ...defaults.goal_settings, ...readJSON(STORAGE_KEYS.goal_settings, {}) },
     thought_archive: readJSON(STORAGE_KEYS.thought_archive, defaults.thought_archive),
-    sync_settings: { ...defaults.sync_settings, ...readJSON(STORAGE_KEYS.sync_settings, {}) },
+    sync_settings: normalizeSyncSettings(readJSON(STORAGE_KEYS.sync_settings, null)),
   }
 }
 
@@ -147,7 +158,7 @@ export function saveThoughtArchive(archive) {
 }
 
 export function saveSyncSettings(settings) {
-  writeJSON(STORAGE_KEYS.sync_settings, settings)
+  writeJSON(STORAGE_KEYS.sync_settings, normalizeSyncSettings(settings))
 }
 
 export function readSyncMeta() {
@@ -181,7 +192,7 @@ export function importAllData(data) {
     daily_items_config: normalizeDailyItemsConfig(data.daily_items_config),
     goal_settings: { ...defaults.goal_settings, ...(data.goal_settings ?? {}) },
     thought_archive: data.thought_archive ?? defaults.thought_archive,
-    sync_settings: { ...defaults.sync_settings, ...(data.sync_settings ?? {}) },
+    sync_settings: normalizeSyncSettings(data.sync_settings),
   }
   saveAllData(merged)
   return merged
