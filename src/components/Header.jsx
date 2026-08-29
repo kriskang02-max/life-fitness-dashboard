@@ -1,6 +1,6 @@
 import { Settings, Database, Cloud, Pencil } from 'lucide-react'
 import { formatDisplayDate, getMarathonDDay, getWeekStart, formatDateKey } from '../utils/dates'
-import { countDailyScore, ensureTodayLog, getDayCompletionCount } from '../utils/storage'
+import { countWeeklyScore, ensureTodayLog, getDayCompletionCount } from '../utils/storage'
 
 export default function Header({
   onOpenRoutine,
@@ -23,7 +23,7 @@ export default function Header({
   const weekStart = getWeekStart(today)
   const weekEnd = new Date(weekStart)
   weekEnd.setDate(weekEnd.getDate() + 6)
-  const weekScore = countDailyScore(logs, weekStart, weekEnd)
+  const weekScore = countWeeklyScore(logs, weekStart, weekEnd)
 
   const statusBadge =
     todayCount === 4

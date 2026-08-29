@@ -10,11 +10,49 @@
 
 html {
   color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* iOS Safari: 16px+ prevents focus zoom; center date/month pickers */
+input[type='date'],
+input[type='month'],
+input.date-input {
+  font-size: 16px;
+  text-align: center;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type='date']::-webkit-date-and-time-value,
+input[type='month']::-webkit-date-and-time-value {
+  text-align: center;
+}
+
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+@media (min-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 0.875rem;
+  }
+
+  input[type='date'],
+  input[type='month'],
+  input.date-input {
+    font-size: 0.75rem;
+  }
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  touch-action: manipulation;
   background: linear-gradient(135deg, #0f172a 0%, #18181b 50%, #0f172a 100%);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;

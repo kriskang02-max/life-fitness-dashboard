@@ -70,8 +70,7 @@ export default function MonthlyArchive({
             >
               <ChevronLeft size={14} /> 이전 달
             </button>
-            <div className="flex items-center gap-2">
-              <input
+            <input
                 type="month"
                 value={`${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`}
                 max={`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`}
@@ -81,12 +80,9 @@ export default function MonthlyArchive({
                   setViewYear(y)
                   setViewMonth(m - 1)
                 }}
-                className="px-2 py-1.5 text-xs bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+                className="px-3 py-2 text-base sm:text-sm text-center bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 date-input min-w-[9.5rem]"
+                aria-label="월 선택"
               />
-              <span className="text-xs text-zinc-500 hidden sm:inline">
-                {viewYear}년 {viewMonth + 1}월
-              </span>
-            </div>
             <button
               type="button"
               onClick={goNextMonth}

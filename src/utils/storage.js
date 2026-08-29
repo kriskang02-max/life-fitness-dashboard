@@ -182,16 +182,30 @@ export function countDailyScore(logs, startDate, endDate) {
   let completed = 0
   let total = 0
   const current = new Date(startDate)
-  while (current <= endDate) {
+  const end = new Date(endDate)
+  current.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+  while (current <= end) {
     const key = formatDateKey(current)
     const log = logs[key]
+    total += 4
     if (log) {
-      total += 4
       completed += [log.workout, log.diet, log.dopamine, log.read].filter(Boolean).length
     }
     current.setDate(current.getDate() + 1)
   }
   return { completed, total, percent: total ? Math.round((completed / total) * 100) : 0 }
+}
+
+/** 이번 주 KPI: 항상 7일 × 4체크 = 28 만점 */
+export function countWeeklyScore(logs, weekStart, weekEnd) {
+  const { completed } = countDailyScore(logs, weekStart, weekEnd)
+  const WEEKLY_TOTAL = 28
+  return {
+    completed,
+    total: WEEKLY_TOTAL,
+    percent: Math.round((completed / WEEKLY_TOTAL) * 100),
+  }
 }
 
 export function getDayCompletionCount(log) {

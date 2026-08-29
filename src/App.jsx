@@ -171,6 +171,7 @@ export default function App() {
         open={goalOpen}
         onClose={() => setGoalOpen(false)}
         goalSettings={data.goal_settings}
+        dailyItemsConfig={data.daily_items_config}
         onSave={updateGoalSettings}
       />
 

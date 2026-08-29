@@ -1,7 +1,7 @@
 import { Plus, TrendingDown, TrendingUp, Activity, Target, ClipboardList } from 'lucide-react'
 import BodyCompositionChart from './charts/BodyCompositionChart'
 import CardioEfficiencyChart from './charts/CardioEfficiencyChart'
-import { countDailyScore } from '../utils/storage'
+import { countWeeklyScore } from '../utils/storage'
 import { getWeekStart } from '../utils/dates'
 
 export default function WeeklyEngine({
@@ -14,7 +14,7 @@ export default function WeeklyEngine({
   const weekStart = getWeekStart(today)
   const weekEnd = new Date(weekStart)
   weekEnd.setDate(weekEnd.getDate() + 6)
-  const weekScore = countDailyScore(dailyLogs, weekStart, weekEnd)
+  const weekScore = countWeeklyScore(dailyLogs, weekStart, weekEnd)
 
   const sorted = [...weeklyMetrics].sort((a, b) => a.week - b.week)
   const latest = sorted[sorted.length - 1]
@@ -54,7 +54,7 @@ export default function WeeklyEngine({
           icon={<Target size={18} className="text-emerald-400" />}
           label="이번 주 실천 스코어"
           value={`${weekScore.completed}/${weekScore.total}`}
-          sub={`${weekScore.percent}% 달성`}
+          sub={`${weekScore.percent}% 달성 (만점 ${weekScore.total})`}
           accent="emerald"
         />
         <KpiCard

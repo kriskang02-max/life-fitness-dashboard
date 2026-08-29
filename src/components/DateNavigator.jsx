@@ -1,7 +1,6 @@
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   formatDateKey,
-  formatShortDate,
   parseDateKey,
   addDays,
   isSameDay,
@@ -34,23 +33,18 @@ export default function DateNavigator({ selectedDate, onDateChange }) {
           <span className="hidden sm:inline">이전</span>
         </button>
 
-        <div className="flex items-center gap-2 flex-1 min-w-0 justify-center">
-          <Calendar size={14} className="text-emerald-400 shrink-0" />
-          <input
-            type="date"
-            value={formatDateKey(selectedDate)}
-            max={formatDateKey(today)}
-            onChange={(e) => {
-              if (!e.target.value) return
-              const picked = parseDateKey(e.target.value)
-              if (!isFutureDate(picked)) onDateChange(picked)
-            }}
-            className="flex-1 min-w-0 max-w-[9.5rem] px-2 py-1.5 text-xs bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-          />
-          <span className="text-xs text-zinc-400 truncate hidden md:inline">
-            {formatShortDate(selectedDate)}
-          </span>
-        </div>
+        <input
+          type="date"
+          value={formatDateKey(selectedDate)}
+          max={formatDateKey(today)}
+          onChange={(e) => {
+            if (!e.target.value) return
+            const picked = parseDateKey(e.target.value)
+            if (!isFutureDate(picked)) onDateChange(picked)
+          }}
+          className="flex-1 min-w-0 max-w-[11rem] px-2 py-2 text-base sm:text-sm text-center bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 date-input"
+          aria-label="날짜 선택"
+        />
 
         <button
           type="button"
