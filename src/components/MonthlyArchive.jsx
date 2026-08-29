@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
-import { DAILY_ITEMS } from '../utils/constants'
+import { Plus, Trash2, Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
+import { DAILY_CHECK_KEYS } from '../utils/constants'
 import { getMonthDays, formatDateKey } from '../utils/dates'
-import { getDayCompletionCount } from '../utils/storage'
+import { getDayCompletionCount, computeYearlySummary } from '../utils/storage'
 
 const HEATMAP_COLORS = [
   'bg-zinc-800/80',
@@ -25,14 +25,34 @@ export default function MonthlyArchive({
   selectedDateKey,
   onSelectDate,
   onOpenArchiveModal,
+  onEditArchive,
   onDeleteArchive,
 }) {
   const today = new Date()
-  const year = today.getFullYear()
-  const month = today.getMonth()
-  const { days, firstDay } = getMonthDays(year, month)
+  const [viewYear, setViewYear] = useState(today.getFullYear())
+  const [viewMonth, setViewMonth] = useState(today.getMonth())
 
-  const monthSummary = computeMonthSummary(dailyLogs, weeklyMetrics, year, month)
+  const { days, firstDay } = getMonthDays(viewYear, viewMonth)
+  const monthSummary = computeMonthSummary(dailyLogs, weeklyMetrics, viewYear, viewMonth)
+  const yearlySummary = computeYearlySummary(dailyLogs, weeklyMetrics, viewYear)
+
+  const goPrevMonth = () => {
+    if (viewMonth === 0) {
+      setViewYear((y) => y - 1)
+      setViewMonth(11)
+    } else setViewMonth((m) => m - 1)
+  }
+
+  const goNextMonth = () => {
+    if (viewMonth === 11) {
+      setViewYear((y) => y + 1)
+      setViewMonth(0)
+    } else setViewMonth((m) => m + 1)
+  }
+
+  const canNext =
+    viewYear < today.getFullYear() ||
+    (viewYear === today.getFullYear() && viewMonth < today.getMonth())
 
   return (
     <section>
@@ -42,12 +62,43 @@ export default function MonthlyArchive({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="lg:col-span-2 card-glow bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4">
-          <p className="text-xs text-zinc-500 mb-3">
-            {year}년 {month + 1}월 퀘스트 히트맵
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <button
+              type="button"
+              onClick={goPrevMonth}
+              className="flex items-center gap-1 px-2 py-1.5 text-xs text-zinc-400 bg-zinc-800 border border-zinc-700 rounded-lg hover:bg-zinc-700"
+            >
+              <ChevronLeft size={14} /> 이전 달
+            </button>
+            <div className="flex items-center gap-2">
+              <input
+                type="month"
+                value={`${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`}
+                max={`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`}
+                onChange={(e) => {
+                  if (!e.target.value) return
+                  const [y, m] = e.target.value.split('-').map(Number)
+                  setViewYear(y)
+                  setViewMonth(m - 1)
+                }}
+                className="px-2 py-1.5 text-xs bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+              />
+              <span className="text-xs text-zinc-500 hidden sm:inline">
+                {viewYear}년 {viewMonth + 1}월
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={goNextMonth}
+              disabled={!canNext}
+              className="flex items-center gap-1 px-2 py-1.5 text-xs text-zinc-400 bg-zinc-800 border border-zinc-700 rounded-lg hover:bg-zinc-700 disabled:opacity-40"
+            >
+              다음 달 <ChevronRight size={14} />
+            </button>
+          </div>
           <Heatmap
-            year={year}
-            month={month}
+            year={viewYear}
+            month={viewMonth}
             days={days}
             firstDay={firstDay}
             dailyLogs={dailyLogs}
@@ -63,19 +114,39 @@ export default function MonthlyArchive({
           </div>
         </div>
 
-        <div className="card-glow bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4 space-y-4">
-          <p className="text-xs text-zinc-500">월간 서머리</p>
-          <SummaryRow label="총 운동 일수" value={`${monthSummary.workoutDays}일`} />
-          <SummaryRow label="누적 거리" value={`${monthSummary.totalDistance.toFixed(1)} km`} />
-          <SummaryRow
-            label="체지방 순감소"
-            value={
-              monthSummary.bodyFatChange !== null
-                ? `${monthSummary.bodyFatChange > 0 ? '+' : ''}${monthSummary.bodyFatChange.toFixed(1)}%p`
-                : '—'
-            }
-            highlight={monthSummary.bodyFatChange !== null && monthSummary.bodyFatChange < 0}
-          />
+        <div className="space-y-4">
+          <div className="card-glow bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4 space-y-4">
+            <p className="text-xs text-zinc-500">월간 서머리 · {viewYear}년 {viewMonth + 1}월</p>
+            <SummaryRow label="총 운동 일수" value={`${monthSummary.workoutDays}일`} />
+            <SummaryRow label="누적 거리" value={`${monthSummary.totalDistance.toFixed(1)} km`} />
+            <SummaryRow
+              label="체지방 순감소"
+              value={
+                monthSummary.bodyFatChange !== null
+                  ? `${monthSummary.bodyFatChange > 0 ? '+' : ''}${monthSummary.bodyFatChange.toFixed(1)}%p`
+                  : '—'
+              }
+              highlight={monthSummary.bodyFatChange !== null && monthSummary.bodyFatChange < 0}
+            />
+          </div>
+
+          <div className="card-glow bg-zinc-900/60 border border-indigo-500/20 rounded-xl p-4 space-y-3">
+            <p className="text-xs text-indigo-400 font-medium">연간 누적 서머리 · {viewYear}년</p>
+            <SummaryRow
+              label="총 운동 일수"
+              value={`${yearlySummary.workoutDays}일`}
+              sub={`누적 출석률 ${yearlySummary.attendance}%`}
+            />
+            <SummaryRow
+              label="누적 러닝 마일리지"
+              value={`${yearlySummary.totalDistance.toFixed(1)} km`}
+            />
+            <SummaryRow
+              label="올클리어 (4/4) 달성"
+              value={`${yearlySummary.allClearDays}회`}
+              highlight
+            />
+          </div>
         </div>
       </div>
 
@@ -98,7 +169,12 @@ export default function MonthlyArchive({
           </p>
         ) : (
           thoughtArchive.map((item) => (
-            <ArchiveCard key={item.id} item={item} onDelete={() => onDeleteArchive(item.id)} />
+            <ArchiveCard
+              key={item.id}
+              item={item}
+              onEdit={() => onEditArchive(item)}
+              onDelete={() => onDeleteArchive(item.id)}
+            />
           ))
         )}
       </div>
@@ -135,8 +211,7 @@ function Heatmap({ year, month, days, firstDay, dailyLogs, selectedDateKey, onSe
         }`}
         onMouseEnter={() => setTooltip({ key, log, count })}
         onMouseLeave={() => setTooltip(null)}
-        aria-label={`${key} 데일리 기록 보기`}
-        title={buildTooltipText(key, log, count)}
+        aria-label={`${key} 데일리 기록`}
       />
     )
   }
@@ -161,23 +236,31 @@ function Heatmap({ year, month, days, firstDay, dailyLogs, selectedDateKey, onSe
 
 function buildTooltipText(key, log, count) {
   if (!log || count === 0) return `${key}: 미완료`
-  const items = DAILY_ITEMS.filter((item) => log[item.key]).map((item) => item.emoji + ' ' + item.label.split(' ')[0])
-  return `${key}: ${count}/4 — ${items.join(', ') || '없음'}`
+  const labels = { workout: '🏃', diet: '🥗', dopamine: '📵', read: '📖' }
+  const items = DAILY_CHECK_KEYS.filter((k) => log[k]).map((k) => labels[k])
+  return `${key}: ${count}/4 — ${items.join(' ') || '없음'}`
 }
 
-function SummaryRow({ label, value, highlight }) {
+function SummaryRow({ label, value, sub, highlight }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-zinc-400">{label}</span>
-      <span className={`text-sm font-semibold ${highlight ? 'text-emerald-400' : 'text-zinc-200'}`}>
-        {value}
-      </span>
+    <div>
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-zinc-400">{label}</span>
+        <span className={`text-sm font-semibold ${highlight ? 'text-emerald-400' : 'text-zinc-200'}`}>
+          {value}
+        </span>
+      </div>
+      {sub && <p className="text-[10px] text-zinc-500 mt-0.5">{sub}</p>}
     </div>
   )
 }
 
-function ArchiveCard({ item, onDelete }) {
+function ArchiveCard({ item, onEdit, onDelete }) {
   const tagClass = TAG_COLORS[item.tag] ?? TAG_COLORS['독서']
+
+  const handleDelete = () => {
+    if (window.confirm(`「${item.title}」 기록을 삭제할까요?`)) onDelete()
+  }
 
   return (
     <div className="card-glow bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4 group">
@@ -185,14 +268,24 @@ function ArchiveCard({ item, onDelete }) {
         <span className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded border ${tagClass}`}>
           {item.tag}
         </span>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-red-400 transition-all"
-          aria-label="삭제"
-        >
-          <Trash2 size={14} />
-        </button>
+        <div className="flex gap-0.5">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="p-1 text-zinc-500 hover:text-cyan-400 transition-colors"
+            aria-label="수정"
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="p-1 text-zinc-500 hover:text-red-400 transition-colors"
+            aria-label="삭제"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
       <h3 className="text-sm font-semibold text-zinc-100 mb-1">{item.title}</h3>
       <p className="text-xs text-zinc-400 leading-relaxed line-clamp-3">{item.note}</p>
@@ -210,11 +303,13 @@ function computeMonthSummary(dailyLogs, weeklyMetrics, year, month) {
     if (dailyLogs[key]?.workout) workoutDays++
   }
 
-  const sorted = [...weeklyMetrics].sort((a, b) => a.week - b.week)
-  const totalDistance = sorted.reduce((sum, m) => sum + (m.distance || 0), 0)
+  const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`
+  const monthMetrics = weeklyMetrics.filter((w) => w.date?.startsWith(monthPrefix))
+  const totalDistance = monthMetrics.reduce((sum, m) => sum + (m.distance || 0), 0)
 
   let bodyFatChange = null
-  if (sorted.length >= 2) {
+  if (monthMetrics.length >= 2) {
+    const sorted = [...monthMetrics].sort((a, b) => a.week - b.week)
     bodyFatChange = sorted[sorted.length - 1].bodyFat - sorted[0].bodyFat
   }
 

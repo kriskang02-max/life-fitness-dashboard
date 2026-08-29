@@ -1,13 +1,14 @@
 import { Check } from 'lucide-react'
 import Tooltip from './Tooltip'
 import DateNavigator from './DateNavigator'
-import { DAILY_ITEMS } from '../utils/constants'
+import { buildDailyItems } from '../utils/constants'
 import { formatDateKey, getDayKey, isSameDay } from '../utils/dates'
 import { ensureDailyLog } from '../utils/storage'
 
 export default function DailyActions({
   dailyLogs,
   routinePresets,
+  dailyItemsConfig,
   selectedDate,
   onDateChange,
   onToggle,
@@ -19,6 +20,7 @@ export default function DailyActions({
   const logs = ensureDailyLog(dailyLogs, dateKey)
   const dayLog = logs[dateKey]
   const viewingToday = isSameDay(selectedDate, today)
+  const dailyItems = buildDailyItems(dailyItemsConfig, routinePresets, dayKey)
 
   const handleToggle = (key) => {
     onToggle(dateKey, key, !dayLog[key])
@@ -40,11 +42,8 @@ export default function DailyActions({
       <DateNavigator selectedDate={selectedDate} onDateChange={onDateChange} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        {DAILY_ITEMS.map((item) => {
+        {dailyItems.map((item) => {
           const checked = dayLog[item.key]
-          const workoutLabel = item.dynamicLabel
-            ? `${item.label} · ${routinePresets[dayKey] ?? '운동'}`
-            : item.label
 
           return (
             <button
@@ -57,7 +56,7 @@ export default function DailyActions({
                 <div className="flex-1 min-w-0">
                   <Tooltip content={item.tooltip}>
                     <p className="text-sm font-medium text-zinc-200 leading-snug">
-                      {item.emoji} {workoutLabel}
+                      {item.emoji} {item.label}
                     </p>
                   </Tooltip>
                 </div>

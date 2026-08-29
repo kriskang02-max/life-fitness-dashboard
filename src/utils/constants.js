@@ -2,10 +2,12 @@ export const STORAGE_KEYS = {
   daily_logs: 'daily_logs',
   weekly_metrics: 'weekly_metrics',
   routine_presets: 'routine_presets',
+  daily_items_config: 'daily_items_config',
+  goal_settings: 'goal_settings',
   thought_archive: 'thought_archive',
+  sync_settings: 'sync_settings',
+  sync_meta: 'sync_meta',
 }
-
-export const MARATHON_DATE = '2026-11-03'
 
 export const DAY_KEYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -21,34 +23,79 @@ export const DAY_LABELS = {
 
 export const ARCHIVE_TAGS = ['독서', '인사이트', '마인드셋']
 
-export const DAILY_ITEMS = [
-  {
-    key: 'workout',
-    emoji: '🏃',
-    label: '오늘의 관절 보호 운동',
-    tooltip:
-      '크로스핏: 점프류 동작 스텝으로 대체 (박스점프❌, 스텝업⭕) / 러닝: 심박 155 이하 걷뛰로 무릎 충격 분산',
-    dynamicLabel: true,
+export const DAILY_CHECK_KEYS = ['workout', 'diet', 'dopamine', 'read']
+
+export const DAILY_CHECK_LABELS = {
+  workout: '관절 보호 운동',
+  diet: '클린 디너 & 야식 차단',
+  dopamine: '스크린 & 도파민 리밋',
+  read: '데일리 인지 충전',
+}
+
+export const DEFAULT_DAILY_ITEMS_CONFIG = {
+  workout: {
+    emoji: '🔥',
+    label: '에슬레틱 무브먼트 (Athletic Flow)',
+    tooltip: '체중 부하는 줄이고 출력은 극대화. 점프 대신 스텝, 심박 155 이하 스마트 걷뛰',
+    linkWeekday: true,
   },
-  {
-    key: 'diet',
+  diet: {
     emoji: '🥗',
     label: '클린 디너 & 야식 차단',
-    tooltip:
-      '취침 3시간 전 주방 마감 (물 제외 금식), 액상과당/배달음식/야식 절대 금지',
+    tooltip: '취침 3시간 전 주방 마감 (물 제외 금식), 액상과당/배달음식/야식 절대 금지',
+    linkWeekday: false,
   },
-  {
-    key: 'dopamine',
+  dopamine: {
     emoji: '📵',
     label: '스크린 & 도파민 리밋',
-    tooltip:
-      '기상 직후 & 취침 전 각 30~60분 스마트폰 차단, iOS 스크린타임 설정 시간 준수',
+    tooltip: '기상 직후 & 취침 전 각 30~60분 스마트폰 차단, iOS 스크린타임 설정 시간 준수',
+    linkWeekday: false,
   },
-  {
-    key: 'read',
+  read: {
     emoji: '📖',
     label: '데일리 인지 충전 (20분)',
-    tooltip:
-      '출퇴근길/틈새 독서 15~20분 또는 코딩/기술 탐구 등 능동적 지적 자극 채우기',
+    tooltip: '출퇴근길/틈새 독서 15~20분 또는 코딩/기술 탐구 등 능동적 지적 자극 채우기',
+    linkWeekday: false,
   },
-]
+}
+
+export const DEFAULT_GOAL_SETTINGS = {
+  title: '🏃 10km 마라톤 완주',
+  targetDate: '2026-11-03',
+  linkedCheckKey: 'workout',
+}
+
+export const DEFAULT_SYNC_SETTINGS = {
+  provider: null,
+  supabaseUrl: '',
+  supabaseAnonKey: '',
+  syncId: '',
+  gistToken: '',
+  gistId: '',
+}
+
+/** @deprecated use daily_items_config */
+export const DAILY_ITEMS = DAILY_CHECK_KEYS.map((key) => ({
+  key,
+  emoji: DEFAULT_DAILY_ITEMS_CONFIG[key].emoji,
+  label: DEFAULT_DAILY_ITEMS_CONFIG[key].label,
+  tooltip: DEFAULT_DAILY_ITEMS_CONFIG[key].tooltip,
+  dynamicLabel: DEFAULT_DAILY_ITEMS_CONFIG[key].linkWeekday,
+}))
+
+export function buildDailyItems(dailyItemsConfig, routineWeekdays, dayKey) {
+  return DAILY_CHECK_KEYS.map((key) => {
+    const cfg = dailyItemsConfig[key] ?? DEFAULT_DAILY_ITEMS_CONFIG[key]
+    let label = cfg.label
+    if (cfg.linkWeekday && routineWeekdays?.[dayKey]) {
+      label = `${cfg.label} · ${routineWeekdays[dayKey]}`
+    }
+    return {
+      key,
+      emoji: cfg.emoji,
+      label,
+      tooltip: cfg.tooltip,
+      linkWeekday: cfg.linkWeekday,
+    }
+  })
+}

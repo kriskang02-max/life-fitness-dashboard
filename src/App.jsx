@@ -4,6 +4,8 @@ import DailyActions from './components/DailyActions'
 import WeeklyEngine from './components/WeeklyEngine'
 import MonthlyArchive from './components/MonthlyArchive'
 import RoutineSettingsModal from './components/modals/RoutineSettingsModal'
+import GoalSettingsModal from './components/modals/GoalSettingsModal'
+import SyncSettingsModal from './components/modals/SyncSettingsModal'
 import WeeklyDataModal from './components/modals/WeeklyDataModal'
 import WeeklyManageModal from './components/modals/WeeklyManageModal'
 import ArchiveAddModal from './components/modals/ArchiveAddModal'
@@ -15,12 +17,19 @@ import { formatDateKey, parseDateKey } from './utils/dates'
 export default function App() {
   const {
     data,
+    syncStatus,
+    syncMessage,
     updateDailyLogs,
     updateWeeklyMetrics,
     updateRoutinePresets,
+    updateDailyItemsConfig,
+    updateGoalSettings,
     updateThoughtArchive,
+    updateSyncSettings,
     replaceAllData,
     refresh,
+    pullRemote,
+    pushRemote,
   } = useDashboardStorage()
 
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -30,10 +39,13 @@ export default function App() {
   })
 
   const [routineOpen, setRoutineOpen] = useState(false)
+  const [goalOpen, setGoalOpen] = useState(false)
+  const [syncOpen, setSyncOpen] = useState(false)
   const [weeklyOpen, setWeeklyOpen] = useState(false)
   const [weeklyManageOpen, setWeeklyManageOpen] = useState(false)
   const [weeklyEditEntry, setWeeklyEditEntry] = useState(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
+  const [archiveEditEntry, setArchiveEditEntry] = useState(null)
   const [backupOpen, setBackupOpen] = useState(false)
 
   const selectedDateKey = formatDateKey(selectedDate)
@@ -62,6 +74,21 @@ export default function App() {
     [updateThoughtArchive],
   )
 
+  const handleEditArchive = useCallback((item) => {
+    setArchiveEditEntry(item)
+    setArchiveOpen(true)
+  }, [])
+
+  const openArchiveCreate = useCallback(() => {
+    setArchiveEditEntry(null)
+    setArchiveOpen(true)
+  }, [])
+
+  const closeArchiveModal = useCallback(() => {
+    setArchiveOpen(false)
+    setArchiveEditEntry(null)
+  }, [])
+
   const handleDeleteWeekly = useCallback(
     (week) => {
       updateWeeklyMetrics((metrics) => metrics.filter((m) => m.week !== week))
@@ -87,16 +114,26 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-zinc-100">
+      {syncMessage && syncStatus === 'error' && (
+        <div className="bg-red-500/10 border-b border-red-500/30 text-red-400 text-xs text-center py-1.5 px-4">
+          {syncMessage}
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-6 md:space-y-8">
         <Header
           dailyLogs={data.daily_logs}
+          goalSettings={data.goal_settings}
+          syncStatus={syncStatus}
           onOpenRoutine={() => setRoutineOpen(true)}
           onOpenBackup={() => setBackupOpen(true)}
+          onOpenSync={() => setSyncOpen(true)}
+          onOpenGoal={() => setGoalOpen(true)}
         />
 
         <DailyActions
           dailyLogs={data.daily_logs}
           routinePresets={data.routine_presets}
+          dailyItemsConfig={data.daily_items_config}
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
           onToggle={handleToggle}
@@ -115,7 +152,8 @@ export default function App() {
           thoughtArchive={data.thought_archive}
           selectedDateKey={selectedDateKey}
           onSelectDate={handleSelectDateKey}
-          onOpenArchiveModal={() => setArchiveOpen(true)}
+          onOpenArchiveModal={openArchiveCreate}
+          onEditArchive={handleEditArchive}
           onDeleteArchive={handleDeleteArchive}
         />
       </div>
@@ -123,8 +161,27 @@ export default function App() {
       <RoutineSettingsModal
         open={routineOpen}
         onClose={() => setRoutineOpen(false)}
-        presets={data.routine_presets}
-        onSave={updateRoutinePresets}
+        routinePresets={data.routine_presets}
+        dailyItemsConfig={data.daily_items_config}
+        onSaveWeekdays={updateRoutinePresets}
+        onSaveDailyItems={updateDailyItemsConfig}
+      />
+
+      <GoalSettingsModal
+        open={goalOpen}
+        onClose={() => setGoalOpen(false)}
+        goalSettings={data.goal_settings}
+        onSave={updateGoalSettings}
+      />
+
+      <SyncSettingsModal
+        open={syncOpen}
+        onClose={() => setSyncOpen(false)}
+        syncSettings={data.sync_settings}
+        onSave={updateSyncSettings}
+        onImport={refresh}
+        pullRemote={pullRemote}
+        pushRemote={pushRemote}
       />
 
       <WeeklyDataModal
@@ -145,9 +202,10 @@ export default function App() {
 
       <ArchiveAddModal
         open={archiveOpen}
-        onClose={() => setArchiveOpen(false)}
+        onClose={closeArchiveModal}
         archive={data.thought_archive}
         onSave={updateThoughtArchive}
+        editEntry={archiveEditEntry}
       />
 
       <JsonBackupModal

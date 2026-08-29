@@ -1,30 +1,48 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Modal from '../Modal'
 import { ARCHIVE_TAGS } from '../../utils/constants'
 import { formatDateKey } from '../../utils/dates'
 
-export default function ArchiveAddModal({ open, onClose, archive, onSave }) {
+export default function ArchiveAddModal({ open, onClose, archive, onSave, editEntry = null }) {
+  const isEdit = Boolean(editEntry)
   const [form, setForm] = useState({ tag: '독서', title: '', note: '' })
 
-  const reset = () => setForm({ tag: '독서', title: '', note: '' })
+  useEffect(() => {
+    if (open) {
+      if (editEntry) {
+        setForm({ tag: editEntry.tag, title: editEntry.title, note: editEntry.note })
+      } else {
+        setForm({ tag: '독서', title: '', note: '' })
+      }
+    }
+  }, [open, editEntry])
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const maxId = archive.reduce((max, item) => Math.max(max, item.id), 0)
-    const entry = {
-      id: maxId + 1,
-      date: formatDateKey(),
-      tag: form.tag,
-      title: form.title.trim(),
-      note: form.note.trim(),
+    if (isEdit) {
+      onSave(
+        archive.map((item) =>
+          item.id === editEntry.id
+            ? { ...item, tag: form.tag, title: form.title.trim(), note: form.note.trim() }
+            : item,
+        ),
+      )
+    } else {
+      const maxId = archive.reduce((max, item) => Math.max(max, item.id), 0)
+      const entry = {
+        id: maxId + 1,
+        date: formatDateKey(),
+        tag: form.tag,
+        title: form.title.trim(),
+        note: form.note.trim(),
+      }
+      onSave([entry, ...archive])
     }
-    onSave([entry, ...archive])
-    reset()
     onClose()
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="➕ 1줄 기록 추가">
+    <Modal open={open} onClose={onClose} title={isEdit ? '✏️ 기록 수정' : '➕ 1줄 기록 추가'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <label className="block">
           <span className="text-xs text-zinc-400 mb-1 block">태그</span>
@@ -64,7 +82,7 @@ export default function ArchiveAddModal({ open, onClose, archive, onSave }) {
           type="submit"
           className="w-full py-2.5 text-sm font-medium text-white bg-gradient-to-r from-emerald-600 to-indigo-600 rounded-lg hover:from-emerald-500 hover:to-indigo-500 transition-all"
         >
-          추가
+          {isEdit ? '수정 저장' : '추가'}
         </button>
       </form>
     </Modal>
