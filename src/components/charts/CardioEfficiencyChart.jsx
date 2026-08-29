@@ -1,16 +1,5 @@
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js'
 import { Line } from 'react-chartjs-2'
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
+import '../../chartSetup.js'
 
 export default function CardioEfficiencyChart({ metrics }) {
   const sorted = [...metrics].sort((a, b) => a.week - b.week).slice(-8)
