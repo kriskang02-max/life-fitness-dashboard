@@ -1,10 +1,15 @@
-import { Plus, TrendingDown, TrendingUp, Activity, Target } from 'lucide-react'
+import { Plus, TrendingDown, TrendingUp, Activity, Target, ClipboardList } from 'lucide-react'
 import BodyCompositionChart from './charts/BodyCompositionChart'
 import CardioEfficiencyChart from './charts/CardioEfficiencyChart'
 import { countDailyScore } from '../utils/storage'
 import { getWeekStart } from '../utils/dates'
 
-export default function WeeklyEngine({ weeklyMetrics, dailyLogs, onOpenWeeklyModal }) {
+export default function WeeklyEngine({
+  weeklyMetrics,
+  dailyLogs,
+  onOpenWeeklyModal,
+  onOpenWeeklyManage,
+}) {
   const today = new Date()
   const weekStart = getWeekStart(today)
   const weekEnd = new Date(weekStart)
@@ -24,14 +29,24 @@ export default function WeeklyEngine({ weeklyMetrics, dailyLogs, onOpenWeeklyMod
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
           Weekly Engine & Body Hub
         </h2>
-        <button
-          type="button"
-          onClick={onOpenWeeklyModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded-lg hover:bg-cyan-500/20 transition-colors"
-        >
-          <Plus size={14} />
-          주간 데이터 기록
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onOpenWeeklyManage}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded-lg hover:bg-indigo-500/20 transition-colors"
+          >
+            <ClipboardList size={14} />
+            주간 기록 관리
+          </button>
+          <button
+            type="button"
+            onClick={onOpenWeeklyModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded-lg hover:bg-cyan-500/20 transition-colors"
+          >
+            <Plus size={14} />
+            주간 데이터 기록
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">

@@ -22,6 +22,8 @@ export default function MonthlyArchive({
   dailyLogs,
   weeklyMetrics,
   thoughtArchive,
+  selectedDateKey,
+  onSelectDate,
   onOpenArchiveModal,
   onDeleteArchive,
 }) {
@@ -49,6 +51,8 @@ export default function MonthlyArchive({
             days={days}
             firstDay={firstDay}
             dailyLogs={dailyLogs}
+            selectedDateKey={selectedDateKey}
+            onSelectDate={onSelectDate}
           />
           <div className="flex items-center gap-2 mt-3 text-xs text-zinc-500">
             <span>적음</span>
@@ -102,7 +106,7 @@ export default function MonthlyArchive({
   )
 }
 
-function Heatmap({ year, month, days, firstDay, dailyLogs }) {
+function Heatmap({ year, month, days, firstDay, dailyLogs, selectedDateKey, onSelectDate }) {
   const [tooltip, setTooltip] = useState(null)
   const weekdays = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -116,13 +120,22 @@ function Heatmap({ year, month, days, firstDay, dailyLogs }) {
     const log = dailyLogs[key]
     const count = getDayCompletionCount(log)
     const color = HEATMAP_COLORS[count]
+    const isSelected = key === selectedDateKey
 
     cells.push(
-      <div
+      <button
         key={key}
-        className={`heatmap-cell w-full aspect-square rounded-sm ${color} cursor-pointer`}
-        onMouseEnter={() => setTooltip({ key, date: key, log, count, x: d })}
+        type="button"
+        onClick={() => {
+          onSelectDate(key)
+          document.getElementById('daily-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }}
+        className={`heatmap-cell w-full aspect-square rounded-sm ${color} cursor-pointer ${
+          isSelected ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-zinc-900' : ''
+        }`}
+        onMouseEnter={() => setTooltip({ key, log, count })}
         onMouseLeave={() => setTooltip(null)}
+        aria-label={`${key} 데일리 기록 보기`}
         title={buildTooltipText(key, log, count)}
       />
     )

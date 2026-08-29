@@ -5,10 +5,12 @@ import WeeklyEngine from './components/WeeklyEngine'
 import MonthlyArchive from './components/MonthlyArchive'
 import RoutineSettingsModal from './components/modals/RoutineSettingsModal'
 import WeeklyDataModal from './components/modals/WeeklyDataModal'
+import WeeklyManageModal from './components/modals/WeeklyManageModal'
 import ArchiveAddModal from './components/modals/ArchiveAddModal'
 import JsonBackupModal from './components/modals/JsonBackupModal'
 import { useDashboardStorage } from './hooks/useDashboardStorage'
-import { ensureTodayLog } from './utils/storage'
+import { ensureDailyLog } from './utils/storage'
+import { formatDateKey, parseDateKey } from './utils/dates'
 
 export default function App() {
   const {
@@ -21,15 +23,29 @@ export default function App() {
     refresh,
   } = useDashboardStorage()
 
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  })
+
   const [routineOpen, setRoutineOpen] = useState(false)
   const [weeklyOpen, setWeeklyOpen] = useState(false)
+  const [weeklyManageOpen, setWeeklyManageOpen] = useState(false)
+  const [weeklyEditEntry, setWeeklyEditEntry] = useState(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [backupOpen, setBackupOpen] = useState(false)
+
+  const selectedDateKey = formatDateKey(selectedDate)
+
+  const handleSelectDateKey = useCallback((key) => {
+    setSelectedDate(parseDateKey(key))
+  }, [])
 
   const handleToggle = useCallback(
     (dateKey, field, value) => {
       updateDailyLogs((logs) => {
-        const updated = ensureTodayLog(logs)
+        const updated = ensureDailyLog(logs, dateKey)
         return {
           ...updated,
           [dateKey]: { ...updated[dateKey], [field]: value },
@@ -46,6 +62,29 @@ export default function App() {
     [updateThoughtArchive],
   )
 
+  const handleDeleteWeekly = useCallback(
+    (week) => {
+      updateWeeklyMetrics((metrics) => metrics.filter((m) => m.week !== week))
+    },
+    [updateWeeklyMetrics],
+  )
+
+  const handleEditWeekly = useCallback((entry) => {
+    setWeeklyEditEntry(entry)
+    setWeeklyManageOpen(false)
+    setWeeklyOpen(true)
+  }, [])
+
+  const openWeeklyCreate = useCallback(() => {
+    setWeeklyEditEntry(null)
+    setWeeklyOpen(true)
+  }, [])
+
+  const closeWeeklyModal = useCallback(() => {
+    setWeeklyOpen(false)
+    setWeeklyEditEntry(null)
+  }, [])
+
   return (
     <div className="min-h-screen text-zinc-100">
       <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-6 md:space-y-8">
@@ -58,19 +97,24 @@ export default function App() {
         <DailyActions
           dailyLogs={data.daily_logs}
           routinePresets={data.routine_presets}
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
           onToggle={handleToggle}
         />
 
         <WeeklyEngine
           weeklyMetrics={data.weekly_metrics}
           dailyLogs={data.daily_logs}
-          onOpenWeeklyModal={() => setWeeklyOpen(true)}
+          onOpenWeeklyModal={openWeeklyCreate}
+          onOpenWeeklyManage={() => setWeeklyManageOpen(true)}
         />
 
         <MonthlyArchive
           dailyLogs={data.daily_logs}
           weeklyMetrics={data.weekly_metrics}
           thoughtArchive={data.thought_archive}
+          selectedDateKey={selectedDateKey}
+          onSelectDate={handleSelectDateKey}
           onOpenArchiveModal={() => setArchiveOpen(true)}
           onDeleteArchive={handleDeleteArchive}
         />
@@ -85,9 +129,18 @@ export default function App() {
 
       <WeeklyDataModal
         open={weeklyOpen}
-        onClose={() => setWeeklyOpen(false)}
+        onClose={closeWeeklyModal}
         metrics={data.weekly_metrics}
         onSave={updateWeeklyMetrics}
+        editEntry={weeklyEditEntry}
+      />
+
+      <WeeklyManageModal
+        open={weeklyManageOpen}
+        onClose={() => setWeeklyManageOpen(false)}
+        metrics={data.weekly_metrics}
+        onEdit={handleEditWeekly}
+        onDelete={handleDeleteWeekly}
       />
 
       <ArchiveAddModal

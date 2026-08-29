@@ -1,27 +1,47 @@
 import { Check } from 'lucide-react'
 import Tooltip from './Tooltip'
+import DateNavigator from './DateNavigator'
 import { DAILY_ITEMS } from '../utils/constants'
-import { formatDateKey, getDayKey } from '../utils/dates'
-import { ensureTodayLog } from '../utils/storage'
+import { formatDateKey, getDayKey, isSameDay } from '../utils/dates'
+import { ensureDailyLog } from '../utils/storage'
 
-export default function DailyActions({ dailyLogs, routinePresets, onToggle }) {
-  const todayKey = formatDateKey()
-  const dayKey = getDayKey()
-  const logs = ensureTodayLog(dailyLogs)
-  const todayLog = logs[todayKey]
+export default function DailyActions({
+  dailyLogs,
+  routinePresets,
+  selectedDate,
+  onDateChange,
+  onToggle,
+}) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const dateKey = formatDateKey(selectedDate)
+  const dayKey = getDayKey(selectedDate)
+  const logs = ensureDailyLog(dailyLogs, dateKey)
+  const dayLog = logs[dateKey]
+  const viewingToday = isSameDay(selectedDate, today)
 
   const handleToggle = (key) => {
-    onToggle(todayKey, key, !todayLog[key])
+    onToggle(dateKey, key, !dayLog[key])
   }
 
   return (
-    <section>
-      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-        Daily Actions
-      </h2>
+    <section id="daily-section">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+          Daily Actions
+        </h2>
+        {!viewingToday && (
+          <span className="text-xs text-amber-400/90 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-full">
+            과거 기록 편집 중
+          </span>
+        )}
+      </div>
+
+      <DateNavigator selectedDate={selectedDate} onDateChange={onDateChange} />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         {DAILY_ITEMS.map((item) => {
-          const checked = todayLog[item.key]
+          const checked = dayLog[item.key]
           const workoutLabel = item.dynamicLabel
             ? `${item.label} · ${routinePresets[dayKey] ?? '운동'}`
             : item.label

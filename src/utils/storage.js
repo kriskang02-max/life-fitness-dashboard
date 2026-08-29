@@ -30,14 +30,14 @@ export const DEFAULT_ROUTINE_PRESETS = {
 }
 
 export const DEFAULT_WEEKLY_METRICS = [
-  { week: 1, weight: 84.2, bodyFat: 37.2, distance: 3.5, avgHr: 175, pace: '8:10' },
-  { week: 2, weight: 83.8, bodyFat: 36.9, distance: 4.0, avgHr: 173, pace: '7:55' },
-  { week: 3, weight: 83.5, bodyFat: 36.7, distance: 4.5, avgHr: 171, pace: '7:50' },
-  { week: 4, weight: 83.1, bodyFat: 36.5, distance: 5.0, avgHr: 170, pace: '7:45' },
-  { week: 5, weight: 82.8, bodyFat: 36.3, distance: 5.5, avgHr: 168, pace: '7:40' },
-  { week: 6, weight: 82.5, bodyFat: 36.1, distance: 6.0, avgHr: 167, pace: '7:35' },
-  { week: 7, weight: 82.2, bodyFat: 35.8, distance: 6.5, avgHr: 166, pace: '7:32' },
-  { week: 8, weight: 82.0, bodyFat: 35.6, distance: 7.0, avgHr: 165, pace: '7:30' },
+  { week: 1, date: '2026-07-06', weight: 84.2, bodyFat: 37.2, distance: 3.5, avgHr: 175, pace: '8:10' },
+  { week: 2, date: '2026-07-13', weight: 83.8, bodyFat: 36.9, distance: 4.0, avgHr: 173, pace: '7:55' },
+  { week: 3, date: '2026-07-20', weight: 83.5, bodyFat: 36.7, distance: 4.5, avgHr: 171, pace: '7:50' },
+  { week: 4, date: '2026-07-27', weight: 83.1, bodyFat: 36.5, distance: 5.0, avgHr: 170, pace: '7:45' },
+  { week: 5, date: '2026-08-03', weight: 82.8, bodyFat: 36.3, distance: 5.5, avgHr: 168, pace: '7:40' },
+  { week: 6, date: '2026-08-10', weight: 82.5, bodyFat: 36.1, distance: 6.0, avgHr: 167, pace: '7:35' },
+  { week: 7, date: '2026-08-17', weight: 82.2, bodyFat: 35.8, distance: 6.5, avgHr: 166, pace: '7:32' },
+  { week: 8, date: '2026-08-24', weight: 82.0, bodyFat: 35.6, distance: 7.0, avgHr: 165, pace: '7:30' },
 ]
 
 export const DEFAULT_THOUGHT_ARCHIVE = [
@@ -163,10 +163,16 @@ export function getDayCompletionCount(log) {
   return [log.workout, log.diet, log.dopamine, log.read].filter(Boolean).length
 }
 
-export function ensureTodayLog(logs) {
-  const key = formatDateKey()
-  if (!logs[key]) {
-    return { ...logs, [key]: { workout: false, diet: false, dopamine: false, read: false } }
+export function ensureDailyLog(logs, dateKey) {
+  if (!logs[dateKey]) {
+    return {
+      ...logs,
+      [dateKey]: { workout: false, diet: false, dopamine: false, read: false },
+    }
   }
   return logs
+}
+
+export function ensureTodayLog(logs) {
+  return ensureDailyLog(logs, formatDateKey())
 }

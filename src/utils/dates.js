@@ -52,3 +52,30 @@ export function parseDateKey(key) {
   const [y, m, d] = key.split('-').map(Number)
   return new Date(y, m - 1, d)
 }
+
+export function addDays(date, days) {
+  const d = new Date(date)
+  d.setDate(d.getDate() + days)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+export function isSameDay(a, b) {
+  return formatDateKey(a) === formatDateKey(b)
+}
+
+export function isFutureDate(date) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  return d > today
+}
+
+export function formatShortDate(date = new Date()) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  const dayLabel = DAY_LABELS[DAY_KEYS[date.getDay()]]
+  return `${y}.${m}.${d} (${dayLabel})`
+}
