@@ -81,11 +81,11 @@ export default function WeeklyEngine({
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="card-glow bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0">
+        <div className="card-glow bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4 w-full max-w-full overflow-hidden min-w-0">
           <BodyCompositionChart metrics={weeklyMetrics} />
         </div>
-        <div className="card-glow bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4">
+        <div className="card-glow bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4 w-full max-w-full overflow-hidden min-w-0">
           <CardioEfficiencyChart metrics={weeklyMetrics} />
         </div>
       </div>

@@ -70,7 +70,7 @@ export default function BodyCompositionChart({ metrics }) {
   }
 
   return (
-    <div className="h-64">
+    <div className="chart-canvas-wrap h-64">
       <Chart type="bar" data={data} options={options} />
     </div>
   )

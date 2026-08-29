@@ -70,7 +70,7 @@ export default function RoutineSettingsModal({
                 type="text"
                 value={weekdays[day] ?? ''}
                 onChange={(e) => setWeekdays((p) => ({ ...p, [day]: e.target.value }))}
-                className="flex-1 px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                className="flex-1 px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                 placeholder="운동 종류"
               />
             </label>
@@ -88,14 +88,14 @@ export default function RoutineSettingsModal({
                   type="text"
                   value={items[key]?.emoji ?? ''}
                   onChange={(e) => updateItem(key, 'emoji', e.target.value)}
-                  className="px-2 py-2 text-center text-sm bg-zinc-800 border border-zinc-700 rounded-lg"
+                  className="px-2 py-2 text-center text-base bg-zinc-800 border border-zinc-700 rounded-lg"
                   placeholder="🔥"
                 />
                 <input
                   type="text"
                   value={items[key]?.label ?? ''}
                   onChange={(e) => updateItem(key, 'label', e.target.value)}
-                  className="px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+                  className="px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
                   placeholder="제목"
                 />
               </div>
@@ -103,7 +103,7 @@ export default function RoutineSettingsModal({
                 value={items[key]?.tooltip ?? ''}
                 onChange={(e) => updateItem(key, 'tooltip', e.target.value)}
                 rows={2}
-                className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 resize-none"
+                className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 resize-none"
                 placeholder="툴팁 설명"
               />
               {key === 'workout' && (

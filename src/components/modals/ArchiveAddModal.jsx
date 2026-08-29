@@ -49,7 +49,7 @@ export default function ArchiveAddModal({ open, onClose, archive, onSave, editEn
           <select
             value={form.tag}
             onChange={(e) => setForm((p) => ({ ...p, tag: e.target.value }))}
-            className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           >
             {ARCHIVE_TAGS.map((t) => (
               <option key={t} value={t}>{t}</option>
@@ -63,7 +63,7 @@ export default function ArchiveAddModal({ open, onClose, archive, onSave, editEn
             value={form.title}
             onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
             required
-            className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             placeholder="책 제목, 주제 등"
           />
         </label>
@@ -74,7 +74,7 @@ export default function ArchiveAddModal({ open, onClose, archive, onSave, editEn
             onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))}
             required
             rows={3}
-            className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-none"
+            className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-none"
             placeholder="핵심 인사이트를 기록하세요"
           />
         </label>

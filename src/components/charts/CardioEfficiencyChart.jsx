@@ -70,7 +70,7 @@ export default function CardioEfficiencyChart({ metrics }) {
   }
 
   return (
-    <div className="h-64">
+    <div className="chart-canvas-wrap h-64">
       <Line data={data} options={options} />
     </div>
   )

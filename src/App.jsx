@@ -113,13 +113,13 @@ export default function App() {
   }, [])
 
   return (
-    <div className="min-h-screen text-zinc-100">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden text-zinc-100">
       {syncMessage && syncStatus === 'error' && (
         <div className="bg-red-500/10 border-b border-red-500/30 text-red-400 text-xs text-center py-1.5 px-4">
           {syncMessage}
         </div>
       )}
-      <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-6 md:space-y-8">
+      <div className="max-w-7xl mx-auto w-full max-w-full px-4 py-6 md:py-8 space-y-6 md:space-y-8 overflow-x-hidden">
         <Header
           dailyLogs={data.daily_logs}
           goalSettings={data.goal_settings}

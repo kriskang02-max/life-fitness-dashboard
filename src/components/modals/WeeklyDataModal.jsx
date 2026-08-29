@@ -155,7 +155,7 @@ function Field({ label, type, value, onChange, className = '', ...rest }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required
-        className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+        className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
         {...rest}
       />
     </label>

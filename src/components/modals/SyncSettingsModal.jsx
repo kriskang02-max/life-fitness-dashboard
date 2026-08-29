@@ -70,7 +70,7 @@ export default function SyncSettingsModal({
           <select
             value={local.provider ?? ''}
             onChange={(e) => setLocal((p) => ({ ...p, provider: e.target.value || null }))}
-            className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+            className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
           >
             <option value="">사용 안 함 (로컬만)</option>
             <option value="supabase">Supabase (추천)</option>
@@ -85,7 +85,7 @@ export default function SyncSettingsModal({
             value={local.syncId}
             onChange={(e) => setLocal((p) => ({ ...p, syncId: e.target.value }))}
             placeholder="my-unique-sync-key-2026"
-            className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+            className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
           />
         </label>
 
@@ -97,14 +97,14 @@ export default function SyncSettingsModal({
               value={local.supabaseUrl}
               onChange={(e) => setLocal((p) => ({ ...p, supabaseUrl: e.target.value }))}
               placeholder="https://xxxx.supabase.co"
-              className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
             />
             <input
               type="text"
               value={local.supabaseAnonKey}
               onChange={(e) => setLocal((p) => ({ ...p, supabaseAnonKey: e.target.value }))}
               placeholder="anon public key"
-              className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
             />
             <details className="text-xs text-zinc-500">
               <summary className="cursor-pointer text-cyan-400">Supabase 테이블 SQL</summary>
@@ -120,7 +120,7 @@ export default function SyncSettingsModal({
               value={local.gistToken}
               onChange={(e) => setLocal((p) => ({ ...p, gistToken: e.target.value }))}
               placeholder="GitHub Personal Access Token (gist 권한)"
-              className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
             />
             <div className="flex gap-2">
               <input
@@ -128,7 +128,7 @@ export default function SyncSettingsModal({
                 value={local.gistId}
                 onChange={(e) => setLocal((p) => ({ ...p, gistId: e.target.value }))}
                 placeholder="Gist ID"
-                className="flex-1 px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+                className="flex-1 px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
               />
               <button
                 type="button"

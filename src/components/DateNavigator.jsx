@@ -42,7 +42,7 @@ export default function DateNavigator({ selectedDate, onDateChange }) {
             const picked = parseDateKey(e.target.value)
             if (!isFutureDate(picked)) onDateChange(picked)
           }}
-          className="flex-1 min-w-0 max-w-[11rem] px-2 py-2 text-base sm:text-sm text-center bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 date-input"
+          className="flex-1 min-w-0 max-w-[11rem] px-2 py-2 text-base text-center bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 date-input"
           aria-label="날짜 선택"
         />
 

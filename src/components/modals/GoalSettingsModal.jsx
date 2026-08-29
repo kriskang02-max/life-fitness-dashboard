@@ -24,7 +24,7 @@ export default function GoalSettingsModal({
             type="text"
             value={local.title}
             onChange={(e) => setLocal((p) => ({ ...p, title: e.target.value }))}
-            className="w-full px-3 py-2 text-base sm:text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             placeholder="🏃 10km 마라톤 완주"
           />
         </label>
@@ -34,7 +34,7 @@ export default function GoalSettingsModal({
             type="date"
             value={local.targetDate}
             onChange={(e) => setLocal((p) => ({ ...p, targetDate: e.target.value }))}
-            className="w-full px-3 py-2 text-base sm:text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 text-center focus:outline-none focus:ring-2 focus:ring-emerald-500/50 date-input"
+            className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 text-center focus:outline-none focus:ring-2 focus:ring-emerald-500/50 date-input"
           />
         </label>
         <label className="block">
@@ -42,7 +42,7 @@ export default function GoalSettingsModal({
           <select
             value={local.linkedCheckKey ?? ''}
             onChange={(e) => setLocal((p) => ({ ...p, linkedCheckKey: e.target.value || null }))}
-            className="w-full px-3 py-2 text-base sm:text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           >
             <option value="">연동 안 함</option>
             {DAILY_CHECK_KEYS.map((k, i) => {
