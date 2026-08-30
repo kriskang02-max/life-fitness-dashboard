@@ -1,4 +1,4 @@
-import { STORAGE_KEYS, DEFAULT_DAILY_ITEMS_CONFIG, DEFAULT_GOAL_SETTINGS, DEFAULT_SYNC_SETTINGS, BUILTIN_SUPABASE, DEFAULT_FOCUS_COMPASS_DATA } from './constants'
+import { STORAGE_KEYS, DEFAULT_DAILY_ITEMS_CONFIG, DEFAULT_GOAL_SETTINGS, DEFAULT_SYNC_SETTINGS, BUILTIN_SUPABASE, DEFAULT_FOCUS_COMPASS_DATA, DEFAULT_MOTIVATION_VIDEOS } from './constants'
 import { formatDateKey } from './dates'
 
 function generateMockDailyLogs() {
@@ -101,6 +101,17 @@ export function normalizeFocusCompassData(raw, goalSettings = null) {
   }
 }
 
+export function normalizeMotivationVideos(raw) {
+  if (!raw) return { ...DEFAULT_MOTIVATION_VIDEOS, playlist: [] }
+  const playlist = Array.isArray(raw.playlist) ? raw.playlist.filter((v) => v?.videoId) : []
+  let activeVideoId = raw.activeVideoId ?? null
+  if (activeVideoId && !playlist.some((v) => v.videoId === activeVideoId)) {
+    activeVideoId = playlist[0]?.videoId ?? null
+  }
+  if (!activeVideoId && playlist.length > 0) activeVideoId = playlist[0].videoId
+  return { activeVideoId, playlist }
+}
+
 export function getDefaultData() {
   return {
     daily_logs: generateMockDailyLogs(),
@@ -109,6 +120,7 @@ export function getDefaultData() {
     daily_items_config: normalizeDailyItemsConfig(null),
     goal_settings: { ...DEFAULT_GOAL_SETTINGS },
     focus_compass_data: normalizeFocusCompassData(null),
+    motivation_videos: normalizeMotivationVideos(null),
     thought_archive: [...DEFAULT_THOUGHT_ARCHIVE],
     sync_settings: normalizeSyncSettings(null),
   }
@@ -150,6 +162,7 @@ export function loadAllData() {
     daily_items_config: normalizeDailyItemsConfig(readJSON(STORAGE_KEYS.daily_items_config, null)),
     goal_settings: goalSettings,
     focus_compass_data: normalizeFocusCompassData(focusRaw, goalSettings),
+    motivation_videos: normalizeMotivationVideos(readJSON(STORAGE_KEYS.motivation_videos, null)),
     thought_archive: readJSON(STORAGE_KEYS.thought_archive, defaults.thought_archive),
     sync_settings: normalizeSyncSettings(readJSON(STORAGE_KEYS.sync_settings, null)),
   }
@@ -162,6 +175,7 @@ export function saveAllData(data) {
   saveDailyItemsConfig(data.daily_items_config)
   saveGoalSettings(data.goal_settings)
   saveFocusCompassData(data.focus_compass_data)
+  saveMotivationVideos(data.motivation_videos)
   saveThoughtArchive(data.thought_archive)
   if (data.sync_settings) saveSyncSettings(data.sync_settings)
 }
@@ -188,6 +202,10 @@ export function saveGoalSettings(settings) {
 
 export function saveFocusCompassData(data) {
   writeJSON(STORAGE_KEYS.focus_compass_data, normalizeFocusCompassData(data))
+}
+
+export function saveMotivationVideos(data) {
+  writeJSON(STORAGE_KEYS.motivation_videos, normalizeMotivationVideos(data))
 }
 
 export function saveThoughtArchive(archive) {
@@ -229,6 +247,7 @@ export function importAllData(data) {
     daily_items_config: normalizeDailyItemsConfig(data.daily_items_config),
     goal_settings: { ...defaults.goal_settings, ...(data.goal_settings ?? {}) },
     focus_compass_data: normalizeFocusCompassData(data.focus_compass_data, data.goal_settings),
+    motivation_videos: normalizeMotivationVideos(data.motivation_videos),
     thought_archive: data.thought_archive ?? defaults.thought_archive,
     sync_settings: normalizeSyncSettings(data.sync_settings),
   }

@@ -4,6 +4,7 @@ import FocusCompass from './components/FocusCompass'
 import DailyActions from './components/DailyActions'
 import WeeklyEngine from './components/WeeklyEngine'
 import MonthlyArchive from './components/MonthlyArchive'
+import MotivationTube from './components/MotivationTube'
 import RoutineSettingsModal from './components/modals/RoutineSettingsModal'
 import SyncSettingsModal from './components/modals/SyncSettingsModal'
 import WeeklyDataModal from './components/modals/WeeklyDataModal'
@@ -24,6 +25,7 @@ export default function App() {
     updateRoutinePresets,
     updateDailyItemsConfig,
     updateFocusCompassData,
+    updateMotivationVideos,
     updateThoughtArchive,
     updateSyncSettings,
     refresh,
@@ -177,6 +179,11 @@ export default function App() {
           onDeleteArchive={handleDeleteArchive}
           onPinToInsight={handlePinToInsight}
           pinnedArchiveId={data.focus_compass_data?.insight?.pinnedArchiveId}
+        />
+
+        <MotivationTube
+          data={data.motivation_videos}
+          onUpdate={updateMotivationVideos}
         />
       </div>
 

@@ -8,6 +8,7 @@ import {
   saveDailyItemsConfig,
   saveGoalSettings,
   saveFocusCompassData,
+  saveMotivationVideos,
   saveThoughtArchive,
   saveSyncSettings,
   readSyncMeta,
@@ -30,6 +31,7 @@ function buildSyncPayload(data) {
     daily_items_config: data.daily_items_config,
     goal_settings: data.goal_settings,
     focus_compass_data: data.focus_compass_data,
+    motivation_videos: data.motivation_videos,
     thought_archive: data.thought_archive,
   }
 }
@@ -307,6 +309,14 @@ export function useDashboardStorage() {
     [mutate],
   )
 
+  const updateMotivationVideos = useCallback(
+    (updater) => mutate((prev) => ({
+      ...prev,
+      motivation_videos: typeof updater === 'function' ? updater(prev.motivation_videos) : updater,
+    })),
+    [mutate],
+  )
+
   const updateThoughtArchive = useCallback(
     (updater) => mutate((prev) => ({ ...prev, thought_archive: typeof updater === 'function' ? updater(prev.thought_archive) : updater })),
     [mutate],
@@ -341,6 +351,7 @@ export function useDashboardStorage() {
     updateDailyItemsConfig,
     updateGoalSettings,
     updateFocusCompassData,
+    updateMotivationVideos,
     updateThoughtArchive,
     updateSyncSettings,
     replaceAllData,

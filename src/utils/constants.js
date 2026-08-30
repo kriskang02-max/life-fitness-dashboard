@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
   goal_settings: 'goal_settings',
   thought_archive: 'thought_archive',
   focus_compass_data: 'focus_compass_data',
+  motivation_videos: 'motivation_videos',
   sync_settings: 'sync_settings',
   sync_meta: 'sync_meta',
 }
@@ -23,6 +24,13 @@ export const DAY_LABELS = {
 }
 
 export const ARCHIVE_TAGS = ['독서', '인사이트', '마인드셋']
+
+export const MOTIVATION_VIDEO_TAGS = ['동기부여', '마인드셋', '러닝', '인사이트']
+
+export const DEFAULT_MOTIVATION_VIDEOS = {
+  activeVideoId: null,
+  playlist: [],
+}
 
 export const DAILY_CHECK_KEYS = ['workout', 'diet', 'dopamine', 'read']
 
