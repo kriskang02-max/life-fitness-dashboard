@@ -7,6 +7,7 @@ import {
   saveRoutinePresets,
   saveDailyItemsConfig,
   saveGoalSettings,
+  saveFocusCompassData,
   saveThoughtArchive,
   saveSyncSettings,
   readSyncMeta,
@@ -28,6 +29,7 @@ function buildSyncPayload(data) {
     routine_presets: data.routine_presets,
     daily_items_config: data.daily_items_config,
     goal_settings: data.goal_settings,
+    focus_compass_data: data.focus_compass_data,
     thought_archive: data.thought_archive,
   }
 }
@@ -297,6 +299,14 @@ export function useDashboardStorage() {
     [mutate],
   )
 
+  const updateFocusCompassData = useCallback(
+    (updater) => mutate((prev) => ({
+      ...prev,
+      focus_compass_data: typeof updater === 'function' ? updater(prev.focus_compass_data) : updater,
+    })),
+    [mutate],
+  )
+
   const updateThoughtArchive = useCallback(
     (updater) => mutate((prev) => ({ ...prev, thought_archive: typeof updater === 'function' ? updater(prev.thought_archive) : updater })),
     [mutate],
@@ -330,6 +340,7 @@ export function useDashboardStorage() {
     updateRoutinePresets,
     updateDailyItemsConfig,
     updateGoalSettings,
+    updateFocusCompassData,
     updateThoughtArchive,
     updateSyncSettings,
     replaceAllData,

@@ -1,10 +1,10 @@
 import { useState, useCallback } from 'react'
 import Header from './components/Header'
+import FocusCompass from './components/FocusCompass'
 import DailyActions from './components/DailyActions'
 import WeeklyEngine from './components/WeeklyEngine'
 import MonthlyArchive from './components/MonthlyArchive'
 import RoutineSettingsModal from './components/modals/RoutineSettingsModal'
-import GoalSettingsModal from './components/modals/GoalSettingsModal'
 import SyncSettingsModal from './components/modals/SyncSettingsModal'
 import WeeklyDataModal from './components/modals/WeeklyDataModal'
 import WeeklyManageModal from './components/modals/WeeklyManageModal'
@@ -12,7 +12,7 @@ import ArchiveAddModal from './components/modals/ArchiveAddModal'
 import JsonBackupModal from './components/modals/JsonBackupModal'
 import { useDashboardStorage } from './hooks/useDashboardStorage'
 import { ensureDailyLog } from './utils/storage'
-import { formatDateKey, parseDateKey } from './utils/dates'
+import { formatDateKey, parseDateKey, formatShortDotDate } from './utils/dates'
 
 export default function App() {
   const {
@@ -23,10 +23,9 @@ export default function App() {
     updateWeeklyMetrics,
     updateRoutinePresets,
     updateDailyItemsConfig,
-    updateGoalSettings,
+    updateFocusCompassData,
     updateThoughtArchive,
     updateSyncSettings,
-    replaceAllData,
     refresh,
     pullRemote,
     pushRemote,
@@ -39,7 +38,6 @@ export default function App() {
   })
 
   const [routineOpen, setRoutineOpen] = useState(false)
-  const [goalOpen, setGoalOpen] = useState(false)
   const [syncOpen, setSyncOpen] = useState(false)
   const [weeklyOpen, setWeeklyOpen] = useState(false)
   const [weeklyManageOpen, setWeeklyManageOpen] = useState(false)
@@ -47,6 +45,7 @@ export default function App() {
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [archiveEditEntry, setArchiveEditEntry] = useState(null)
   const [backupOpen, setBackupOpen] = useState(false)
+  const [insightPinFlash, setInsightPinFlash] = useState(0)
 
   const selectedDateKey = formatDateKey(selectedDate)
 
@@ -89,6 +88,23 @@ export default function App() {
     setArchiveEditEntry(null)
   }, [])
 
+  const handlePinToInsight = useCallback(
+    (item) => {
+      const shortDate = formatShortDotDate(item.date)
+      const body = item.note?.trim() || item.title
+      updateFocusCompassData((prev) => ({
+        ...prev,
+        insight: {
+          title: body,
+          sub: `📌 ${shortDate} 메모에서 고정됨 · ${item.tag}`,
+          pinnedArchiveId: String(item.id),
+        },
+      }))
+      setInsightPinFlash(Date.now())
+    },
+    [updateFocusCompassData],
+  )
+
   const handleDeleteWeekly = useCallback(
     (week) => {
       updateWeeklyMetrics((metrics) => metrics.filter((m) => m.week !== week))
@@ -122,12 +138,16 @@ export default function App() {
       <div className="max-w-7xl mx-auto w-full max-w-full px-4 py-6 md:py-8 space-y-6 md:space-y-8 overflow-x-hidden">
         <Header
           dailyLogs={data.daily_logs}
-          goalSettings={data.goal_settings}
           syncStatus={syncStatus}
           onOpenRoutine={() => setRoutineOpen(true)}
           onOpenBackup={() => setBackupOpen(true)}
           onOpenSync={() => setSyncOpen(true)}
-          onOpenGoal={() => setGoalOpen(true)}
+        />
+
+        <FocusCompass
+          data={data.focus_compass_data}
+          onUpdate={updateFocusCompassData}
+          insightPinFlash={insightPinFlash}
         />
 
         <DailyActions
@@ -155,6 +175,8 @@ export default function App() {
           onOpenArchiveModal={openArchiveCreate}
           onEditArchive={handleEditArchive}
           onDeleteArchive={handleDeleteArchive}
+          onPinToInsight={handlePinToInsight}
+          pinnedArchiveId={data.focus_compass_data?.insight?.pinnedArchiveId}
         />
       </div>
 
@@ -165,14 +187,6 @@ export default function App() {
         dailyItemsConfig={data.daily_items_config}
         onSaveWeekdays={updateRoutinePresets}
         onSaveDailyItems={updateDailyItemsConfig}
-      />
-
-      <GoalSettingsModal
-        open={goalOpen}
-        onClose={() => setGoalOpen(false)}
-        goalSettings={data.goal_settings}
-        dailyItemsConfig={data.daily_items_config}
-        onSave={updateGoalSettings}
       />
 
       <SyncSettingsModal

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Pencil, ChevronLeft, ChevronRight, Pin } from 'lucide-react'
 import { DAILY_CHECK_KEYS } from '../utils/constants'
 import { getMonthDays, formatDateKey } from '../utils/dates'
 import { getDayCompletionCount, computeYearlySummary } from '../utils/storage'
@@ -27,6 +27,8 @@ export default function MonthlyArchive({
   onOpenArchiveModal,
   onEditArchive,
   onDeleteArchive,
+  onPinToInsight,
+  pinnedArchiveId,
 }) {
   const today = new Date()
   const [viewYear, setViewYear] = useState(today.getFullYear())
@@ -168,8 +170,10 @@ export default function MonthlyArchive({
             <ArchiveCard
               key={item.id}
               item={item}
+              isPinned={String(item.id) === String(pinnedArchiveId)}
               onEdit={() => onEditArchive(item)}
               onDelete={() => onDeleteArchive(item.id)}
+              onPin={() => onPinToInsight(item)}
             />
           ))
         )}
@@ -251,7 +255,7 @@ function SummaryRow({ label, value, sub, highlight }) {
   )
 }
 
-function ArchiveCard({ item, onEdit, onDelete }) {
+function ArchiveCard({ item, isPinned, onEdit, onDelete, onPin }) {
   const tagClass = TAG_COLORS[item.tag] ?? TAG_COLORS['독서']
 
   const handleDelete = () => {
@@ -265,6 +269,19 @@ function ArchiveCard({ item, onEdit, onDelete }) {
           {item.tag}
         </span>
         <div className="flex gap-0.5">
+          <button
+            type="button"
+            onClick={onPin}
+            className={`p-1 transition-colors ${
+              isPinned
+                ? 'text-emerald-400'
+                : 'text-zinc-500 hover:text-emerald-400'
+            }`}
+            aria-label="상단 인사이트에 고정"
+            title="📌 상단 고정 (Pin to Insight)"
+          >
+            <Pin size={14} className={isPinned ? 'fill-current' : ''} />
+          </button>
           <button
             type="button"
             onClick={onEdit}
@@ -285,7 +302,16 @@ function ArchiveCard({ item, onEdit, onDelete }) {
       </div>
       <h3 className="text-sm font-semibold text-zinc-100 mb-1">{item.title}</h3>
       <p className="text-xs text-zinc-400 leading-relaxed line-clamp-3">{item.note}</p>
-      <p className="text-[10px] text-zinc-600 mt-2">{item.date}</p>
+      <div className="flex items-center justify-between gap-2 mt-2">
+        <p className="text-[10px] text-zinc-600">{item.date}</p>
+        <button
+          type="button"
+          onClick={onPin}
+          className="text-[10px] font-medium text-emerald-400/80 hover:text-emerald-400 transition-colors"
+        >
+          📌 상단 고정
+        </button>
+      </div>
     </div>
   )
 }

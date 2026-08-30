@@ -72,6 +72,11 @@ export function isFutureDate(date) {
   return d > today
 }
 
+export function formatShortDotDate(dateKey) {
+  const [y, m, d] = dateKey.split('-')
+  return `${m}.${d}`
+}
+
 export function formatShortDate(date = new Date()) {
   const y = date.getFullYear()
   const m = String(date.getMonth() + 1).padStart(2, '0')
