@@ -286,36 +286,43 @@ export function ensureTodayLog(logs) {
 }
 
 export function computeYearlySummary(dailyLogs, weeklyMetrics, year) {
-  const yearPrefix = `${year}-`
   let workoutDays = 0
-  let daysWithLog = 0
+  let activeDays = 0
   let allClearDays = 0
   let daysInYearSoFar = 0
   const today = new Date()
-  const end = year < today.getFullYear() ? new Date(year, 11, 31) : today
+  today.setHours(0, 0, 0, 0)
+  const end =
+    year < today.getFullYear()
+      ? new Date(year, 11, 31)
+      : new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  end.setHours(0, 0, 0, 0)
 
   for (let m = 0; m < 12; m++) {
     const daysInMonth = new Date(year, m + 1, 0).getDate()
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(year, m, d)
+      date.setHours(0, 0, 0, 0)
       if (date > end) break
-      if (year === today.getFullYear() && date > today) break
+
       daysInYearSoFar++
       const key = formatDateKey(date)
       const log = dailyLogs[key]
-      if (log) {
-        daysWithLog++
-        if (log.workout) workoutDays++
-        if (getDayCompletionCount(log) === 4) allClearDays++
-      }
+      if (!log) continue
+
+      const completion = getDayCompletionCount(log)
+      if (completion > 0) activeDays++
+      if (log.workout) workoutDays++
+      if (completion === 4) allClearDays++
     }
   }
 
   const yearMetrics = weeklyMetrics.filter((w) => w.date?.startsWith(String(year)))
   const totalDistance = yearMetrics.reduce((s, w) => s + (w.distance || 0), 0)
+  // 누적 출석률: 운동 완료 일수 / 올해 경과 일수
   const attendance = daysInYearSoFar
-    ? Math.round((daysWithLog / daysInYearSoFar) * 100)
+    ? Math.round((workoutDays / daysInYearSoFar) * 100)
     : 0
 
-  return { workoutDays, totalDistance, allClearDays, attendance, daysInYearSoFar }
+  return { workoutDays, totalDistance, allClearDays, attendance, daysInYearSoFar, activeDays }
 }

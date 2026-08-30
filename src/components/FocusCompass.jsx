@@ -4,17 +4,17 @@ import { getMarathonDDay } from '../utils/dates'
 
 const CARD_META = {
   target: {
-    label: '🎯 TARGET FOCUS',
+    label: '🎯 TARGET',
     accent: 'border-emerald-500/25 from-emerald-500/10',
     subClass: 'text-emerald-400/90',
   },
   mindset: {
-    label: '🧭 MINDSET & MOTTO',
+    label: '🧭 MOTTO',
     accent: 'border-cyan-500/25 from-cyan-500/10',
     subClass: 'text-cyan-400/80',
   },
   insight: {
-    label: '💡 RECENT INSIGHT',
+    label: '💡 INSIGHT',
     accent: 'border-indigo-500/25 from-indigo-500/10',
     subClass: 'text-indigo-400/80',
   },

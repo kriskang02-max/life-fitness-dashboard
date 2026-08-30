@@ -21,8 +21,8 @@ export default function DateNavigator({ selectedDate, onDateChange }) {
   const goToday = () => onDateChange(new Date())
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 p-3 rounded-xl border border-zinc-800/80 bg-zinc-900/40">
-      <div className="flex items-center gap-2 flex-1 min-w-0">
+    <div className="flex flex-row items-center gap-2 mb-4 p-3 rounded-xl border border-zinc-800/80 bg-zinc-900/40 min-w-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
         <button
           type="button"
           onClick={goPrev}
@@ -42,7 +42,7 @@ export default function DateNavigator({ selectedDate, onDateChange }) {
             const picked = parseDateKey(e.target.value)
             if (!isFutureDate(picked)) onDateChange(picked)
           }}
-          className="flex-1 min-w-0 max-w-[11rem] px-2 py-2 text-base text-center bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 date-input"
+          className="flex-1 min-w-0 px-2 py-2 text-base text-center bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 date-input"
           aria-label="날짜 선택"
         />
 
@@ -62,7 +62,7 @@ export default function DateNavigator({ selectedDate, onDateChange }) {
         type="button"
         onClick={goToday}
         disabled={isToday}
-        className="px-3 py-2 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/20 transition-colors disabled:opacity-40 shrink-0"
+        className="px-2 sm:px-3 py-2 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/20 transition-colors disabled:opacity-40 shrink-0 whitespace-nowrap"
       >
         📅 오늘로 이동
       </button>

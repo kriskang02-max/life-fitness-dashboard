@@ -32,18 +32,18 @@ export default function Header({
 
   return (
     <header className="card-glow bg-zinc-900/80 backdrop-blur-md border border-zinc-800/60 rounded-2xl p-4 md:p-5">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-          <div>
-            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-0.5">Today</p>
-            <h1 className="text-lg md:text-xl font-semibold text-zinc-100">{formatDisplayDate(today)}</h1>
-          </div>
-          <span className={`inline-flex self-start items-center px-3 py-1 text-xs font-medium rounded-full border ${statusBadge.className}`}>
-            {statusBadge.text} · {todayCount}/4
-          </span>
+      <div className="flex flex-col gap-3">
+        <div>
+          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-0.5">Today</p>
+          <h1 className="text-lg md:text-xl font-semibold text-zinc-100">{formatDisplayDate(today)}</h1>
         </div>
 
-        <div className="flex items-center justify-end gap-2 flex-wrap">
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <span className={`inline-flex items-center px-2.5 sm:px-3 py-1 text-xs font-medium rounded-full border shrink-0 ${statusBadge.className}`}>
+            {statusBadge.text} · {todayCount}/4
+          </span>
+
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             type="button"
             onClick={onOpenSync}
@@ -69,6 +69,7 @@ export default function Header({
             <Database size={15} />
             <span className="hidden sm:inline">JSON 백업</span>
           </button>
+          </div>
         </div>
       </div>
     </header>
