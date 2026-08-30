@@ -191,7 +191,7 @@ export default function FocusCompass({ data, onUpdate, insightPinFlash }) {
               className="text-left w-full group/content"
               onClick={() => startEdit('mindset')}
             >
-              <p className="text-sm md:text-base font-medium text-zinc-100 leading-relaxed mb-2 group-hover/content:text-cyan-50 transition-colors">
+              <p className="text-sm md:text-base font-medium text-zinc-100 leading-relaxed mb-2 whitespace-pre-line break-words group-hover/content:text-cyan-50 transition-colors">
                 {data.mindset.title}
               </p>
               <p className={`text-xs ${CARD_META.mindset.subClass}`}>{data.mindset.sub}</p>
@@ -239,7 +239,7 @@ export default function FocusCompass({ data, onUpdate, insightPinFlash }) {
               className="text-left w-full group/content"
               onClick={() => startEdit('insight')}
             >
-              <p className="text-sm md:text-base font-medium text-zinc-100 leading-relaxed mb-2 group-hover/content:text-indigo-50 transition-colors">
+              <p className="text-sm md:text-base font-medium text-zinc-100 leading-relaxed mb-2 whitespace-pre-line break-words group-hover/content:text-indigo-50 transition-colors">
                 {data.insight.title}
               </p>
               <p className={`text-xs ${CARD_META.insight.subClass}`}>{data.insight.sub}</p>

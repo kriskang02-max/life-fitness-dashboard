@@ -23,7 +23,7 @@ export default function ArchiveAddModal({ open, onClose, archive, onSave, editEn
       onSave(
         archive.map((item) =>
           item.id === editEntry.id
-            ? { ...item, tag: form.tag, title: form.title.trim(), note: form.note.trim() }
+            ? { ...item, tag: form.tag, title: form.title.trim(), note: form.note.trimEnd() }
             : item,
         ),
       )
@@ -34,7 +34,7 @@ export default function ArchiveAddModal({ open, onClose, archive, onSave, editEn
         date: formatDateKey(),
         tag: form.tag,
         title: form.title.trim(),
-        note: form.note.trim(),
+        note: form.note.trimEnd(),
       }
       onSave([entry, ...archive])
     }

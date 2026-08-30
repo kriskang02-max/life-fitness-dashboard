@@ -301,7 +301,7 @@ function ArchiveCard({ item, isPinned, onEdit, onDelete, onPin }) {
         </div>
       </div>
       <h3 className="text-sm font-semibold text-zinc-100 mb-1">{item.title}</h3>
-      <p className="text-xs text-zinc-400 leading-relaxed line-clamp-3">{item.note}</p>
+      <p className="text-xs text-zinc-400 leading-relaxed line-clamp-3 whitespace-pre-line break-words">{item.note}</p>
       <div className="flex items-center justify-between gap-2 mt-2">
         <p className="text-[10px] text-zinc-600">{item.date}</p>
         <button
