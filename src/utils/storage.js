@@ -286,42 +286,50 @@ export function ensureTodayLog(logs) {
 }
 
 export function computeYearlySummary(dailyLogs, weeklyMetrics, year) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const todayKey = formatDateKey(today)
+  const endKey = year < today.getFullYear() ? `${year}-12-31` : todayKey
+
   let workoutDays = 0
   let activeDays = 0
   let allClearDays = 0
   let daysInYearSoFar = 0
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const end =
-    year < today.getFullYear()
-      ? new Date(year, 11, 31)
-      : new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  end.setHours(0, 0, 0, 0)
+  let todayWorkoutCounted = false
 
   for (let m = 0; m < 12; m++) {
     const daysInMonth = new Date(year, m + 1, 0).getDate()
     for (let d = 1; d <= daysInMonth; d++) {
-      const date = new Date(year, m, d)
-      date.setHours(0, 0, 0, 0)
-      if (date > end) break
+      const key = formatDateKey(new Date(year, m, d))
+      if (key > endKey) break
 
       daysInYearSoFar++
-      const key = formatDateKey(date)
       const log = dailyLogs[key]
-      if (!log) continue
+      const completion = log ? getDayCompletionCount(log) : 0
 
-      const completion = getDayCompletionCount(log)
       if (completion > 0) activeDays++
-      if (log.workout) workoutDays++
+      if (log?.workout) {
+        workoutDays++
+        if (key === todayKey) todayWorkoutCounted = true
+      }
       if (completion === 4) allClearDays++
     }
   }
 
+  // 당일 workout 체크는 dailyLogs 최신값으로 한 번 더 보정 (루프/타임존 엣지 케이스)
+  if (
+    year === today.getFullYear() &&
+    todayKey <= endKey &&
+    dailyLogs[todayKey]?.workout &&
+    !todayWorkoutCounted
+  ) {
+    workoutDays++
+  }
+
   const yearMetrics = weeklyMetrics.filter((w) => w.date?.startsWith(String(year)))
   const totalDistance = yearMetrics.reduce((s, w) => s + (w.distance || 0), 0)
-  // 누적 출석률: 운동 완료 일수 / 올해 경과 일수
   const attendance = daysInYearSoFar
-    ? Math.round((workoutDays / daysInYearSoFar) * 100)
+    ? Math.round((workoutDays / daysInYearSoFar) * 1000) / 10
     : 0
 
   return { workoutDays, totalDistance, allClearDays, attendance, daysInYearSoFar, activeDays }

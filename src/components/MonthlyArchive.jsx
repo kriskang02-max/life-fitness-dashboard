@@ -133,7 +133,7 @@ export default function MonthlyArchive({
             <SummaryRow
               label="총 운동 일수"
               value={`${yearlySummary.workoutDays}일`}
-              sub={`누적 출석률 ${yearlySummary.attendance}%`}
+              sub={`누적 출석률 ${yearlySummary.workoutDays}/${yearlySummary.daysInYearSoFar}일 (${yearlySummary.attendance}%)`}
             />
             <SummaryRow
               label="누적 러닝 마일리지"
