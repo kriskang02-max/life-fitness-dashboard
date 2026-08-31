@@ -84,7 +84,7 @@ export default function DailyActions({
               key={item.key}
               className={`check-card card-glow text-left p-4 rounded-xl border border-zinc-800/80 bg-zinc-900/60 ${checked ? 'checked' : ''}`}
             >
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0 w-full">
                 {isEditing ? (
                   <>
                     <div className="flex-1 min-w-0 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -124,35 +124,37 @@ export default function DailyActions({
                   </>
                 ) : (
                   <>
-                    <Tooltip content={item.tooltip}>
+                    <div className="flex items-center gap-1 min-w-0 flex-1">
+                      <Tooltip content={item.tooltip}>
+                        <button
+                          type="button"
+                          onClick={() => handleToggle(item.key)}
+                          className="min-w-0 flex-1 text-left group/label"
+                        >
+                          <p className="text-sm font-medium text-zinc-200 leading-snug truncate group-hover/label:text-zinc-100">
+                            {item.emoji} {item.label}
+                          </p>
+                        </button>
+                      </Tooltip>
                       <button
                         type="button"
-                        onClick={() => handleToggle(item.key)}
-                        className="flex-1 min-w-0 text-left group/label"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          startEdit(item.key, item.label)
+                        }}
+                        className="p-1 shrink-0 text-zinc-500 hover:text-cyan-400 transition-colors"
+                        aria-label="내용 수정"
                       >
-                        <p className="text-sm font-medium text-zinc-200 leading-snug truncate group-hover/label:text-zinc-100">
-                          {item.emoji} {item.label}
-                        </p>
+                        <Pencil size={13} />
                       </button>
-                    </Tooltip>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        startEdit(item.key, item.label)
-                      }}
-                      className="p-1 shrink-0 text-zinc-500 hover:text-cyan-400 transition-colors"
-                      aria-label="내용 수정"
-                    >
-                      <Pencil size={13} />
-                    </button>
+                    </div>
                   </>
                 )}
                 <button
                   type="button"
                   onClick={() => handleToggle(item.key)}
                   disabled={isEditing}
-                  className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
+                  className={`ml-auto shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
                     checked
                       ? 'bg-emerald-500 border-emerald-500 text-white'
                       : 'border-zinc-600 bg-zinc-800/50'
