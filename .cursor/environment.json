@@ -1,0 +1,17 @@
+{
+  "name": "Life & Fitness Dashboard",
+  "install": "npm ci",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "npm run dev",
+      "description": "Vite dev server. App is served at http://localhost:5173/life-fitness-dashboard/ (note the base path)."
+    }
+  ],
+  "ports": [
+    {
+      "name": "Vite dev server",
+      "port": 5173
+    }
+  ]
+}
