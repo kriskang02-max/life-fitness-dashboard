@@ -130,3 +130,25 @@ export function buildDailyItems(dailyItemsConfig, routineWeekdays, dayKey) {
     }
   })
 }
+
+/** 해당 날짜 체크박스 라벨: 일별 수정값 우선, 없으면 설정/요일 기본값 */
+export function resolveDailyItemLabel(log, key, dailyItemsConfig, routineWeekdays, dayKey) {
+  const custom = log?.labels?.[key]
+  if (custom != null && String(custom).trim() !== '') return String(custom).trim()
+  const item = buildDailyItems(dailyItemsConfig, routineWeekdays, dayKey).find((i) => i.key === key)
+  return item?.label ?? ''
+}
+
+export function resolveDailyItemsForLog(log, dailyItemsConfig, routineWeekdays, dayKey) {
+  return buildDailyItems(dailyItemsConfig, routineWeekdays, dayKey).map((item) => ({
+    ...item,
+    label: resolveDailyItemLabel(log, item.key, dailyItemsConfig, routineWeekdays, dayKey),
+  }))
+}
+
+/** 체크박스1 운동 완료 + 제목에 '크로스핏' 포함 */
+export function isCrossfitWorkoutDay(log, dailyItemsConfig, routineWeekdays, dayKey) {
+  if (!log?.workout) return false
+  const label = resolveDailyItemLabel(log, 'workout', dailyItemsConfig, routineWeekdays, dayKey)
+  return label.includes('크로스핏')
+}

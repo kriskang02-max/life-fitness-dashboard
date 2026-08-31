@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, Trash2, Pencil, ChevronLeft, ChevronRight, Pin } from 'lucide-react'
-import { DAILY_CHECK_KEYS } from '../utils/constants'
-import { getMonthDays, formatDateKey } from '../utils/dates'
+import { DAILY_CHECK_KEYS, isCrossfitWorkoutDay, resolveDailyItemLabel } from '../utils/constants'
+import { getMonthDays, formatDateKey, getDayKey } from '../utils/dates'
 import { getDayCompletionCount, computeYearlySummary } from '../utils/storage'
 
 const HEATMAP_COLORS = [
@@ -22,6 +22,8 @@ export default function MonthlyArchive({
   dailyLogs,
   weeklyMetrics,
   thoughtArchive,
+  routinePresets,
+  dailyItemsConfig,
   selectedDateKey,
   onSelectDate,
   onOpenArchiveModal,
@@ -100,15 +102,23 @@ export default function MonthlyArchive({
             days={days}
             firstDay={firstDay}
             dailyLogs={dailyLogs}
+            routinePresets={routinePresets}
+            dailyItemsConfig={dailyItemsConfig}
             selectedDateKey={selectedDateKey}
             onSelectDate={onSelectDate}
           />
-          <div className="flex items-center gap-2 mt-3 text-xs text-zinc-500">
-            <span>적음</span>
-            {HEATMAP_COLORS.map((c, i) => (
-              <div key={i} className={`w-3 h-3 rounded-sm ${c}`} />
-            ))}
-            <span>많음</span>
+          <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-zinc-500">
+            <span className="flex items-center gap-2">
+              <span>적음</span>
+              {HEATMAP_COLORS.map((c, i) => (
+                <div key={i} className={`w-3 h-3 rounded-sm ${c}`} />
+              ))}
+              <span>많음</span>
+            </span>
+            <span className="flex items-center gap-1 text-amber-400/90">
+              <span className="inline-flex w-3 h-3 items-center justify-center rounded-sm bg-zinc-800 text-[8px] font-bold">✓</span>
+              크로스핏 완료
+            </span>
           </div>
         </div>
 
@@ -182,7 +192,7 @@ export default function MonthlyArchive({
   )
 }
 
-function Heatmap({ year, month, days, firstDay, dailyLogs, selectedDateKey, onSelectDate }) {
+function Heatmap({ year, month, days, firstDay, dailyLogs, routinePresets, dailyItemsConfig, selectedDateKey, onSelectDate }) {
   const [tooltip, setTooltip] = useState(null)
   const weekdays = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -193,26 +203,37 @@ function Heatmap({ year, month, days, firstDay, dailyLogs, selectedDateKey, onSe
   for (let d = 1; d <= days; d++) {
     const date = new Date(year, month, d)
     const key = formatDateKey(date)
+    const dayKey = getDayKey(date)
     const log = dailyLogs[key]
     const count = getDayCompletionCount(log)
     const color = HEATMAP_COLORS[count]
     const isSelected = key === selectedDateKey
+    const isCrossfit = isCrossfitWorkoutDay(log, dailyItemsConfig, routinePresets, dayKey)
 
     cells.push(
-      <button
-        key={key}
-        type="button"
-        onClick={() => {
-          onSelectDate(key)
-          document.getElementById('daily-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }}
-        className={`heatmap-cell w-full aspect-square rounded-sm ${color} cursor-pointer ${
-          isSelected ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-zinc-900' : ''
-        }`}
-        onMouseEnter={() => setTooltip({ key, log, count })}
-        onMouseLeave={() => setTooltip(null)}
-        aria-label={`${key} 데일리 기록`}
-      />
+      <div key={key} className="relative w-full aspect-square">
+        <button
+          type="button"
+          onClick={() => {
+            onSelectDate(key)
+            document.getElementById('daily-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }}
+          className={`heatmap-cell w-full h-full rounded-sm ${color} cursor-pointer ${
+            isSelected ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-zinc-900' : ''
+          } ${isCrossfit ? 'ring-1 ring-amber-400/60' : ''}`}
+          onMouseEnter={() => setTooltip({ key, log, count, dayKey, isCrossfit })}
+          onMouseLeave={() => setTooltip(null)}
+          aria-label={`${key} 데일리 기록${isCrossfit ? ' · 크로스핏' : ''}`}
+        />
+        {isCrossfit && (
+          <span
+            className="absolute inset-0 flex items-center justify-center pointer-events-none text-[10px] sm:text-xs font-bold text-amber-200 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+            aria-hidden
+          >
+            ✓
+          </span>
+        )}
+      </div>
     )
   }
 
@@ -227,18 +248,30 @@ function Heatmap({ year, month, days, firstDay, dailyLogs, selectedDateKey, onSe
       {tooltip && (
         <div className="absolute bottom-full left-0 mb-2 z-10 px-3 py-2 text-xs bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-w-xs">
           <p className="font-medium text-zinc-200 mb-1">{tooltip.key}</p>
-          <p className="text-zinc-400">{buildTooltipText(tooltip.key, tooltip.log, tooltip.count)}</p>
+          <p className="text-zinc-400">
+            {buildTooltipText(
+              tooltip.key,
+              tooltip.log,
+              tooltip.count,
+              tooltip.dayKey,
+              dailyItemsConfig,
+              routinePresets,
+            )}
+          </p>
         </div>
       )}
     </div>
   )
 }
 
-function buildTooltipText(key, log, count) {
+function buildTooltipText(key, log, count, dayKey, dailyItemsConfig, routinePresets) {
   if (!log || count === 0) return `${key}: 미완료`
   const labels = { workout: '🏃', diet: '🥗', dopamine: '📵', read: '📖' }
   const items = DAILY_CHECK_KEYS.filter((k) => log[k]).map((k) => labels[k])
-  return `${key}: ${count}/4 — ${items.join(' ') || '없음'}`
+  const workoutLabel = resolveDailyItemLabel(log, 'workout', dailyItemsConfig, routinePresets, dayKey)
+  const crossfitNote =
+    log.workout && workoutLabel.includes('크로스핏') ? ' · 크로스핏 ✓' : ''
+  return `${key}: ${count}/4 — ${items.join(' ') || '없음'}${crossfitNote}`
 }
 
 function SummaryRow({ label, value, sub, highlight }) {

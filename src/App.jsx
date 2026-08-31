@@ -68,6 +68,28 @@ export default function App() {
     [updateDailyLogs],
   )
 
+  const handleUpdateLabel = useCallback(
+    (dateKey, field, label) => {
+      updateDailyLogs((logs) => {
+        const updated = ensureDailyLog(logs, dateKey)
+        const entry = { ...updated[dateKey] }
+        const labels = { ...(entry.labels ?? {}) }
+        if (label == null || label === '') {
+          delete labels[field]
+        } else {
+          labels[field] = label
+        }
+        if (Object.keys(labels).length === 0) {
+          delete entry.labels
+        } else {
+          entry.labels = labels
+        }
+        return { ...updated, [dateKey]: entry }
+      })
+    },
+    [updateDailyLogs],
+  )
+
   const handleDeleteArchive = useCallback(
     (id) => {
       updateThoughtArchive((archive) => archive.filter((item) => item.id !== id))
@@ -159,6 +181,7 @@ export default function App() {
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
           onToggle={handleToggle}
+          onUpdateLabel={handleUpdateLabel}
         />
 
         <WeeklyEngine
@@ -172,6 +195,8 @@ export default function App() {
           dailyLogs={data.daily_logs}
           weeklyMetrics={data.weekly_metrics}
           thoughtArchive={data.thought_archive}
+          routinePresets={data.routine_presets}
+          dailyItemsConfig={data.daily_items_config}
           selectedDateKey={selectedDateKey}
           onSelectDate={handleSelectDateKey}
           onOpenArchiveModal={openArchiveCreate}
