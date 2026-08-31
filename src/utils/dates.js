@@ -1,40 +1,57 @@
 import { DAY_KEYS, DAY_LABELS } from './constants'
 
-export function formatDateKey(date = new Date()) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+/** 대시보드 기준 타임존 — 아카이브·데일리·헤더 날짜 등 */
+export const APP_TIMEZONE = 'Asia/Seoul'
+
+const WEEKDAY_TO_KEY = {
+  Sun: 'Sun',
+  Mon: 'Mon',
+  Tue: 'Tue',
+  Wed: 'Wed',
+  Thu: 'Thu',
+  Fri: 'Fri',
+  Sat: 'Sat',
+}
+
+export function formatDateKey(date = new Date(), timeZone = APP_TIMEZONE) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
 }
 
 export function formatDisplayDate(date = new Date()) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  const dayLabel = DAY_LABELS[DAY_KEYS[date.getDay()]]
+  const key = formatDateKey(date)
+  const [y, m, d] = key.split('-')
+  const dayLabel = DAY_LABELS[getDayKey(date)]
   return `${y}.${m}.${d} ${dayLabel}요일`
 }
 
 export function getDayKey(date = new Date()) {
-  return DAY_KEYS[date.getDay()]
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_TIMEZONE,
+    weekday: 'short',
+  }).format(date)
+  return WEEKDAY_TO_KEY[weekday] ?? DAY_KEYS[date.getDay()]
 }
 
 export function getMarathonDDay(marathonDate) {
-  const target = new Date(marathonDate + 'T00:00:00')
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24))
+  const target = parseDateKey(marathonDate)
+  const today = parseDateKey(formatDateKey())
+  const diff = Math.round((target - today) / (1000 * 60 * 60 * 24))
   if (diff > 0) return { label: `D-${diff}`, days: diff }
   if (diff === 0) return { label: 'D-Day', days: 0 }
   return { label: `D+${Math.abs(diff)}`, days: diff }
 }
 
 export function getWeekStart(date = new Date()) {
-  const d = new Date(date)
-  const day = d.getDay()
-  const diff = day === 0 ? -6 : 1 - day
+  const d = parseDateKey(formatDateKey(date))
+  const dayKey = getDayKey(d)
+  const dayIndex = DAY_KEYS.indexOf(dayKey)
+  const diff = dayIndex === 0 ? -6 : 1 - dayIndex
   d.setDate(d.getDate() + diff)
-  d.setHours(0, 0, 0, 0)
   return d
 }
 
@@ -54,9 +71,8 @@ export function parseDateKey(key) {
 }
 
 export function addDays(date, days) {
-  const d = new Date(date)
+  const d = parseDateKey(formatDateKey(date))
   d.setDate(d.getDate() + days)
-  d.setHours(0, 0, 0, 0)
   return d
 }
 
@@ -65,22 +81,17 @@ export function isSameDay(a, b) {
 }
 
 export function isFutureDate(date) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  return d > today
+  return formatDateKey(date) > formatDateKey()
 }
 
 export function formatShortDotDate(dateKey) {
-  const [y, m, d] = dateKey.split('-')
+  const [, m, d] = dateKey.split('-')
   return `${m}.${d}`
 }
 
 export function formatShortDate(date = new Date()) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  const dayLabel = DAY_LABELS[DAY_KEYS[date.getDay()]]
+  const key = formatDateKey(date)
+  const [y, m, d] = key.split('-')
+  const dayLabel = DAY_LABELS[getDayKey(date)]
   return `${y}.${m}.${d} (${dayLabel})`
 }
