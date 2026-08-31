@@ -7,8 +7,9 @@ import MonthlyArchive from './components/MonthlyArchive'
 import MotivationTube from './components/MotivationTube'
 import RoutineSettingsModal from './components/modals/RoutineSettingsModal'
 import SyncSettingsModal from './components/modals/SyncSettingsModal'
-import WeeklyDataModal from './components/modals/WeeklyDataModal'
-import WeeklyManageModal from './components/modals/WeeklyManageModal'
+import BodyMeasurementModal from './components/modals/BodyMeasurementModal'
+import RunningRecordModal from './components/modals/RunningRecordModal'
+import MeasurementManageModal from './components/modals/MeasurementManageModal'
 import ArchiveAddModal from './components/modals/ArchiveAddModal'
 import JsonBackupModal from './components/modals/JsonBackupModal'
 import { useDashboardStorage } from './hooks/useDashboardStorage'
@@ -21,7 +22,8 @@ export default function App() {
     syncStatus,
     syncMessage,
     updateDailyLogs,
-    updateWeeklyMetrics,
+    updateBodyMeasurements,
+    updateRunningRecords,
     updateRoutinePresets,
     updateDailyItemsConfig,
     updateFocusCompassData,
@@ -41,9 +43,11 @@ export default function App() {
 
   const [routineOpen, setRoutineOpen] = useState(false)
   const [syncOpen, setSyncOpen] = useState(false)
-  const [weeklyOpen, setWeeklyOpen] = useState(false)
-  const [weeklyManageOpen, setWeeklyManageOpen] = useState(false)
-  const [weeklyEditEntry, setWeeklyEditEntry] = useState(null)
+  const [bodyModalOpen, setBodyModalOpen] = useState(false)
+  const [runningModalOpen, setRunningModalOpen] = useState(false)
+  const [measureManageOpen, setMeasureManageOpen] = useState(false)
+  const [bodyEditEntry, setBodyEditEntry] = useState(null)
+  const [runningEditEntry, setRunningEditEntry] = useState(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [archiveEditEntry, setArchiveEditEntry] = useState(null)
   const [backupOpen, setBackupOpen] = useState(false)
@@ -129,27 +133,50 @@ export default function App() {
     [updateFocusCompassData],
   )
 
-  const handleDeleteWeekly = useCallback(
-    (week) => {
-      updateWeeklyMetrics((metrics) => metrics.filter((m) => m.week !== week))
+  const handleDeleteBody = useCallback(
+    (id) => {
+      updateBodyMeasurements((items) => items.filter((m) => m.id !== id))
     },
-    [updateWeeklyMetrics],
+    [updateBodyMeasurements],
   )
 
-  const handleEditWeekly = useCallback((entry) => {
-    setWeeklyEditEntry(entry)
-    setWeeklyManageOpen(false)
-    setWeeklyOpen(true)
+  const handleDeleteRunning = useCallback(
+    (id) => {
+      updateRunningRecords((items) => items.filter((m) => m.id !== id))
+    },
+    [updateRunningRecords],
+  )
+
+  const handleEditBody = useCallback((entry) => {
+    setBodyEditEntry(entry)
+    setMeasureManageOpen(false)
+    setBodyModalOpen(true)
   }, [])
 
-  const openWeeklyCreate = useCallback(() => {
-    setWeeklyEditEntry(null)
-    setWeeklyOpen(true)
+  const handleEditRunning = useCallback((entry) => {
+    setRunningEditEntry(entry)
+    setMeasureManageOpen(false)
+    setRunningModalOpen(true)
   }, [])
 
-  const closeWeeklyModal = useCallback(() => {
-    setWeeklyOpen(false)
-    setWeeklyEditEntry(null)
+  const openBodyCreate = useCallback(() => {
+    setBodyEditEntry(null)
+    setBodyModalOpen(true)
+  }, [])
+
+  const openRunningCreate = useCallback(() => {
+    setRunningEditEntry(null)
+    setRunningModalOpen(true)
+  }, [])
+
+  const closeBodyModal = useCallback(() => {
+    setBodyModalOpen(false)
+    setBodyEditEntry(null)
+  }, [])
+
+  const closeRunningModal = useCallback(() => {
+    setRunningModalOpen(false)
+    setRunningEditEntry(null)
   }, [])
 
   return (
@@ -185,15 +212,18 @@ export default function App() {
         />
 
         <WeeklyEngine
-          weeklyMetrics={data.weekly_metrics}
+          bodyMeasurements={data.body_measurements}
+          runningRecords={data.running_records}
           dailyLogs={data.daily_logs}
-          onOpenWeeklyModal={openWeeklyCreate}
-          onOpenWeeklyManage={() => setWeeklyManageOpen(true)}
+          onOpenBodyModal={openBodyCreate}
+          onOpenRunningModal={openRunningCreate}
+          onOpenManageModal={() => setMeasureManageOpen(true)}
         />
 
         <MonthlyArchive
           dailyLogs={data.daily_logs}
-          weeklyMetrics={data.weekly_metrics}
+          bodyMeasurements={data.body_measurements}
+          runningRecords={data.running_records}
           thoughtArchive={data.thought_archive}
           routinePresets={data.routine_presets}
           dailyItemsConfig={data.daily_items_config}
@@ -230,20 +260,31 @@ export default function App() {
         pushRemote={pushRemote}
       />
 
-      <WeeklyDataModal
-        open={weeklyOpen}
-        onClose={closeWeeklyModal}
-        metrics={data.weekly_metrics}
-        onSave={updateWeeklyMetrics}
-        editEntry={weeklyEditEntry}
+      <BodyMeasurementModal
+        open={bodyModalOpen}
+        onClose={closeBodyModal}
+        measurements={data.body_measurements}
+        onSave={updateBodyMeasurements}
+        editEntry={bodyEditEntry}
       />
 
-      <WeeklyManageModal
-        open={weeklyManageOpen}
-        onClose={() => setWeeklyManageOpen(false)}
-        metrics={data.weekly_metrics}
-        onEdit={handleEditWeekly}
-        onDelete={handleDeleteWeekly}
+      <RunningRecordModal
+        open={runningModalOpen}
+        onClose={closeRunningModal}
+        records={data.running_records}
+        onSave={updateRunningRecords}
+        editEntry={runningEditEntry}
+      />
+
+      <MeasurementManageModal
+        open={measureManageOpen}
+        onClose={() => setMeasureManageOpen(false)}
+        bodyMeasurements={data.body_measurements}
+        runningRecords={data.running_records}
+        onEditBody={handleEditBody}
+        onEditRunning={handleEditRunning}
+        onDeleteBody={handleDeleteBody}
+        onDeleteRunning={handleDeleteRunning}
       />
 
       <ArchiveAddModal

@@ -1,5 +1,8 @@
 export const STORAGE_KEYS = {
   daily_logs: 'daily_logs',
+  body_measurements: 'body_measurements',
+  running_records: 'running_records',
+  /** @deprecated migrated to body_measurements + running_records */
   weekly_metrics: 'weekly_metrics',
   routine_presets: 'routine_presets',
   daily_items_config: 'daily_items_config',

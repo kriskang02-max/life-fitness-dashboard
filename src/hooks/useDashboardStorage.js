@@ -3,7 +3,8 @@ import {
   loadAllData,
   saveAllData,
   saveDailyLogs,
-  saveWeeklyMetrics,
+  saveBodyMeasurements,
+  saveRunningRecords,
   saveRoutinePresets,
   saveDailyItemsConfig,
   saveGoalSettings,
@@ -26,7 +27,8 @@ import {
 function buildSyncPayload(data) {
   return {
     daily_logs: data.daily_logs,
-    weekly_metrics: data.weekly_metrics,
+    body_measurements: data.body_measurements,
+    running_records: data.running_records,
     routine_presets: data.routine_presets,
     daily_items_config: data.daily_items_config,
     goal_settings: data.goal_settings,
@@ -281,8 +283,19 @@ export function useDashboardStorage() {
     [mutate],
   )
 
-  const updateWeeklyMetrics = useCallback(
-    (updater) => mutate((prev) => ({ ...prev, weekly_metrics: typeof updater === 'function' ? updater(prev.weekly_metrics) : updater })),
+  const updateBodyMeasurements = useCallback(
+    (updater) => mutate((prev) => ({
+      ...prev,
+      body_measurements: typeof updater === 'function' ? updater(prev.body_measurements) : updater,
+    })),
+    [mutate],
+  )
+
+  const updateRunningRecords = useCallback(
+    (updater) => mutate((prev) => ({
+      ...prev,
+      running_records: typeof updater === 'function' ? updater(prev.running_records) : updater,
+    })),
     [mutate],
   )
 
@@ -346,7 +359,8 @@ export function useDashboardStorage() {
     syncStatus,
     syncMessage,
     updateDailyLogs,
-    updateWeeklyMetrics,
+    updateBodyMeasurements,
+    updateRunningRecords,
     updateRoutinePresets,
     updateDailyItemsConfig,
     updateGoalSettings,

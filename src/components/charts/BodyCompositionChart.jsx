@@ -1,9 +1,11 @@
 import { Chart } from 'react-chartjs-2'
 import '../../chartSetup.js'
+import { sortByDate } from '../../utils/storage'
+import { formatShortDotDate } from '../../utils/dates'
 
-export default function BodyCompositionChart({ metrics }) {
-  const sorted = [...metrics].sort((a, b) => a.week - b.week).slice(-8)
-  const labels = sorted.map((m) => `${m.week}주`)
+export default function BodyCompositionChart({ measurements }) {
+  const sorted = sortByDate(measurements).slice(-8)
+  const labels = sorted.map((m) => formatShortDotDate(m.date))
 
   const data = {
     labels,

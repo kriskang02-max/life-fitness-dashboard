@@ -1,9 +1,11 @@
 import { Line } from 'react-chartjs-2'
 import '../../chartSetup.js'
+import { sortByDate } from '../../utils/storage'
+import { formatShortDotDate } from '../../utils/dates'
 
-export default function CardioEfficiencyChart({ metrics }) {
-  const sorted = [...metrics].sort((a, b) => a.week - b.week).slice(-8)
-  const labels = sorted.map((m) => `${m.week}주`)
+export default function CardioEfficiencyChart({ records }) {
+  const sorted = sortByDate(records).slice(-8)
+  const labels = sorted.map((m) => formatShortDotDate(m.date))
 
   const data = {
     labels,

@@ -20,7 +20,8 @@ const TAG_COLORS = {
 
 export default function MonthlyArchive({
   dailyLogs,
-  weeklyMetrics,
+  bodyMeasurements,
+  runningRecords,
   thoughtArchive,
   routinePresets,
   dailyItemsConfig,
@@ -37,8 +38,8 @@ export default function MonthlyArchive({
   const [viewMonth, setViewMonth] = useState(today.getMonth())
 
   const { days, firstDay } = getMonthDays(viewYear, viewMonth)
-  const monthSummary = computeMonthSummary(dailyLogs, weeklyMetrics, viewYear, viewMonth)
-  const yearlySummary = computeYearlySummary(dailyLogs, weeklyMetrics, viewYear)
+  const monthSummary = computeMonthSummary(dailyLogs, bodyMeasurements, runningRecords, viewYear, viewMonth)
+  const yearlySummary = computeYearlySummary(dailyLogs, runningRecords, viewYear)
 
   const goPrevMonth = () => {
     if (viewMonth === 0) {
@@ -349,7 +350,7 @@ function ArchiveCard({ item, isPinned, onEdit, onDelete, onPin }) {
   )
 }
 
-function computeMonthSummary(dailyLogs, weeklyMetrics, year, month) {
+function computeMonthSummary(dailyLogs, bodyMeasurements, runningRecords, year, month) {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   let workoutDays = 0
 
@@ -359,12 +360,13 @@ function computeMonthSummary(dailyLogs, weeklyMetrics, year, month) {
   }
 
   const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`
-  const monthMetrics = weeklyMetrics.filter((w) => w.date?.startsWith(monthPrefix))
-  const totalDistance = monthMetrics.reduce((sum, m) => sum + (m.distance || 0), 0)
+  const monthRuns = (runningRecords ?? []).filter((r) => r.date?.startsWith(monthPrefix))
+  const totalDistance = monthRuns.reduce((sum, m) => sum + (m.distance || 0), 0)
 
+  const monthBody = (bodyMeasurements ?? []).filter((b) => b.date?.startsWith(monthPrefix))
   let bodyFatChange = null
-  if (monthMetrics.length >= 2) {
-    const sorted = [...monthMetrics].sort((a, b) => a.week - b.week)
+  if (monthBody.length >= 2) {
+    const sorted = [...monthBody].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
     bodyFatChange = sorted[sorted.length - 1].bodyFat - sorted[0].bodyFat
   }
 

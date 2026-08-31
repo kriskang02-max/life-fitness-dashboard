@@ -1,14 +1,16 @@
-import { Plus, TrendingDown, TrendingUp, Activity, Target, ClipboardList } from 'lucide-react'
+import { Plus, TrendingDown, TrendingUp, Activity, Target, ClipboardList, Scale } from 'lucide-react'
 import BodyCompositionChart from './charts/BodyCompositionChart'
 import CardioEfficiencyChart from './charts/CardioEfficiencyChart'
-import { countWeeklyScore } from '../utils/storage'
+import { countWeeklyScore, sortByDate } from '../utils/storage'
 import { getWeekStart } from '../utils/dates'
 
 export default function WeeklyEngine({
-  weeklyMetrics,
+  bodyMeasurements,
+  runningRecords,
   dailyLogs,
-  onOpenWeeklyModal,
-  onOpenWeeklyManage,
+  onOpenBodyModal,
+  onOpenRunningModal,
+  onOpenManageModal,
 }) {
   const today = new Date()
   const weekStart = getWeekStart(today)
@@ -16,35 +18,45 @@ export default function WeeklyEngine({
   weekEnd.setDate(weekEnd.getDate() + 6)
   const weekScore = countWeeklyScore(dailyLogs, weekStart, weekEnd)
 
-  const sorted = [...weeklyMetrics].sort((a, b) => a.week - b.week)
-  const latest = sorted[sorted.length - 1]
-  const prev = sorted.length > 1 ? sorted[sorted.length - 2] : null
+  const bodySorted = sortByDate(bodyMeasurements)
+  const runningSorted = sortByDate(runningRecords)
+  const latestBody = bodySorted[bodySorted.length - 1]
+  const prevBody = bodySorted.length > 1 ? bodySorted[bodySorted.length - 2] : null
+  const latestRun = runningSorted[runningSorted.length - 1]
 
-  const bodyFatDelta = latest && prev ? (latest.bodyFat - prev.bodyFat).toFixed(1) : null
+  const bodyFatDelta = latestBody && prevBody ? (latestBody.bodyFat - prevBody.bodyFat).toFixed(1) : null
   const bodyFatTrend = bodyFatDelta !== null ? (parseFloat(bodyFatDelta) <= 0 ? 'down' : 'up') : null
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
-          Weekly Engine & Body Hub
+          체성분 · 러닝 기록
         </h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={onOpenWeeklyManage}
+            onClick={onOpenManageModal}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded-lg hover:bg-indigo-500/20 transition-colors"
           >
             <ClipboardList size={14} />
-            주간 관리
+            기록 관리
           </button>
           <button
             type="button"
-            onClick={onOpenWeeklyModal}
+            onClick={onOpenBodyModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/20 transition-colors"
+          >
+            <Scale size={14} />
+            체성분 입력
+          </button>
+          <button
+            type="button"
+            onClick={onOpenRunningModal}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded-lg hover:bg-cyan-500/20 transition-colors"
           >
             <Plus size={14} />
-            주간 입력
+            러닝 입력
           </button>
         </div>
       </div>
@@ -64,29 +76,29 @@ export default function WeeklyEngine({
               : <TrendingUp size={18} className="text-amber-400" />
           }
           label="최신 체지방률"
-          value={latest ? `${latest.bodyFat}%` : '—'}
+          value={latestBody ? `${latestBody.bodyFat}%` : '—'}
           sub={
             bodyFatDelta !== null
-              ? `전주 대비 ${parseFloat(bodyFatDelta) > 0 ? '+' : ''}${bodyFatDelta}%p`
+              ? `이전 측정 대비 ${parseFloat(bodyFatDelta) > 0 ? '+' : ''}${bodyFatDelta}%p`
               : '데이터 없음'
           }
           accent={bodyFatTrend === 'down' ? 'emerald' : 'amber'}
         />
         <KpiCard
           icon={<Activity size={18} className="text-cyan-400" />}
-          label="유산소 효율 요약"
-          value={latest ? `${latest.pace} 페이스` : '—'}
-          sub={latest ? `@ 심박 ${latest.avgHr}bpm · ${latest.distance}km` : '데이터 없음'}
+          label="최근 러닝 요약"
+          value={latestRun ? `${latestRun.pace} 페이스` : '—'}
+          sub={latestRun ? `@ 심박 ${latestRun.avgHr}bpm · ${latestRun.distance}km` : '데이터 없음'}
           accent="cyan"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0">
         <div className="card-glow bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4 w-full max-w-full overflow-hidden min-w-0">
-          <BodyCompositionChart metrics={weeklyMetrics} />
+          <BodyCompositionChart measurements={bodyMeasurements} />
         </div>
         <div className="card-glow bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4 w-full max-w-full overflow-hidden min-w-0">
-          <CardioEfficiencyChart metrics={weeklyMetrics} />
+          <CardioEfficiencyChart records={runningRecords} />
         </div>
       </div>
     </section>

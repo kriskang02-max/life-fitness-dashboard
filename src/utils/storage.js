@@ -40,6 +40,93 @@ export const DEFAULT_WEEKLY_METRICS = [
   { week: 8, date: '2026-08-24', weight: 82.0, bodyFat: 35.6, distance: 7.0, avgHr: 165, pace: '7:30' },
 ]
 
+const { body_measurements: DEFAULT_BODY_MEASUREMENTS, running_records: DEFAULT_RUNNING_RECORDS } =
+  migrateFromWeeklyMetrics(DEFAULT_WEEKLY_METRICS)
+
+export function migrateFromWeeklyMetrics(weeklyMetrics) {
+  if (!Array.isArray(weeklyMetrics) || weeklyMetrics.length === 0) {
+    return { body_measurements: [], running_records: [] }
+  }
+  const sorted = [...weeklyMetrics].sort((a, b) => a.week - b.week)
+  return {
+    body_measurements: sorted.map((m) => ({
+      id: `body-w${m.week}`,
+      date: m.date ?? '',
+      weight: m.weight,
+      bodyFat: m.bodyFat,
+    })),
+    running_records: sorted.map((m) => ({
+      id: `run-w${m.week}`,
+      date: m.date ?? '',
+      distance: m.distance,
+      avgHr: m.avgHr,
+      pace: m.pace,
+    })),
+  }
+}
+
+export function sortByDate(items) {
+  return [...items].sort((a, b) => {
+    if (a.date < b.date) return -1
+    if (a.date > b.date) return 1
+    return 0
+  })
+}
+
+export function normalizeBodyMeasurements(raw) {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((m) => m?.date)
+    .map((m, i) => ({
+      id: m.id ?? `body-${m.date}-${i}`,
+      date: m.date,
+      weight: Number(m.weight),
+      bodyFat: Number(m.bodyFat),
+    }))
+}
+
+export function normalizeRunningRecords(raw) {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((m) => m?.date)
+    .map((m, i) => ({
+      id: m.id ?? `run-${m.date}-${i}`,
+      date: m.date,
+      distance: Number(m.distance),
+      avgHr: Number(m.avgHr),
+      pace: String(m.pace ?? ''),
+    }))
+}
+
+export function resolveMeasurementData(payload = {}) {
+  const hasBody = Array.isArray(payload.body_measurements) && payload.body_measurements.length > 0
+  const hasRunning = Array.isArray(payload.running_records) && payload.running_records.length > 0
+  if (hasBody || hasRunning) {
+    return {
+      body_measurements: normalizeBodyMeasurements(payload.body_measurements ?? []),
+      running_records: normalizeRunningRecords(payload.running_records ?? []),
+    }
+  }
+  if (Array.isArray(payload.weekly_metrics) && payload.weekly_metrics.length > 0) {
+    const migrated = migrateFromWeeklyMetrics(payload.weekly_metrics)
+    return {
+      body_measurements: normalizeBodyMeasurements(migrated.body_measurements),
+      running_records: normalizeRunningRecords(migrated.running_records),
+    }
+  }
+  return {
+    body_measurements: [...DEFAULT_BODY_MEASUREMENTS],
+    running_records: [...DEFAULT_RUNNING_RECORDS],
+  }
+}
+
+export function createMeasurementId(prefix) {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return `${prefix}-${crypto.randomUUID()}`
+  }
+  return `${prefix}-${Date.now().toString(36)}`
+}
+
 export const DEFAULT_THOUGHT_ARCHIVE = [
   { id: 1, date: '2026-08-28', tag: '독서', title: '아토믹 해빗', note: '1% 개선의 복리 효과. 작은 습관이 정체기를 돌파한다.' },
   { id: 2, date: '2026-08-25', tag: '인사이트', title: '심박 존 트레이닝', note: 'Zone 2 유산소가 지방 연소와 회복력에 핵심. 155bpm 이하 유지.' },
@@ -115,7 +202,8 @@ export function normalizeMotivationVideos(raw) {
 export function getDefaultData() {
   return {
     daily_logs: generateMockDailyLogs(),
-    weekly_metrics: [...DEFAULT_WEEKLY_METRICS],
+    body_measurements: [...DEFAULT_BODY_MEASUREMENTS],
+    running_records: [...DEFAULT_RUNNING_RECORDS],
     routine_presets: { ...DEFAULT_ROUTINE_PRESETS },
     daily_items_config: normalizeDailyItemsConfig(null),
     goal_settings: { ...DEFAULT_GOAL_SETTINGS },
@@ -155,9 +243,20 @@ export function loadAllData() {
   const goalSettings = { ...defaults.goal_settings, ...readJSON(STORAGE_KEYS.goal_settings, {}) }
   const focusRaw = readJSON(STORAGE_KEYS.focus_compass_data, null)
 
+  const bodyRaw = readJSON(STORAGE_KEYS.body_measurements, null)
+  const runningRaw = readJSON(STORAGE_KEYS.running_records, null)
+  const weeklyLegacy = readJSON(STORAGE_KEYS.weekly_metrics, null)
+
+  const measurements = resolveMeasurementData({
+    body_measurements: bodyRaw,
+    running_records: runningRaw,
+    weekly_metrics: weeklyLegacy,
+  })
+
   return {
     daily_logs: readJSON(STORAGE_KEYS.daily_logs, defaults.daily_logs),
-    weekly_metrics: readJSON(STORAGE_KEYS.weekly_metrics, defaults.weekly_metrics),
+    body_measurements: measurements.body_measurements,
+    running_records: measurements.running_records,
     routine_presets: normalizeWeekdays(readJSON(STORAGE_KEYS.routine_presets, null)),
     daily_items_config: normalizeDailyItemsConfig(readJSON(STORAGE_KEYS.daily_items_config, null)),
     goal_settings: goalSettings,
@@ -170,7 +269,8 @@ export function loadAllData() {
 
 export function saveAllData(data) {
   saveDailyLogs(data.daily_logs)
-  saveWeeklyMetrics(data.weekly_metrics)
+  saveBodyMeasurements(data.body_measurements)
+  saveRunningRecords(data.running_records)
   saveRoutinePresets(data.routine_presets)
   saveDailyItemsConfig(data.daily_items_config)
   saveGoalSettings(data.goal_settings)
@@ -184,6 +284,15 @@ export function saveDailyLogs(logs) {
   writeJSON(STORAGE_KEYS.daily_logs, logs)
 }
 
+export function saveBodyMeasurements(items) {
+  writeJSON(STORAGE_KEYS.body_measurements, normalizeBodyMeasurements(items))
+}
+
+export function saveRunningRecords(items) {
+  writeJSON(STORAGE_KEYS.running_records, normalizeRunningRecords(items))
+}
+
+/** @deprecated use saveBodyMeasurements / saveRunningRecords */
 export function saveWeeklyMetrics(metrics) {
   writeJSON(STORAGE_KEYS.weekly_metrics, metrics)
 }
@@ -240,9 +349,11 @@ export function exportAllData() {
 export function importAllData(data) {
   if (!data || typeof data !== 'object') throw new Error('Invalid data format')
   const defaults = getDefaultData()
+  const measurements = resolveMeasurementData(data)
   const merged = {
     daily_logs: data.daily_logs ?? defaults.daily_logs,
-    weekly_metrics: data.weekly_metrics ?? defaults.weekly_metrics,
+    body_measurements: measurements.body_measurements,
+    running_records: measurements.running_records,
     routine_presets: normalizeWeekdays(data.routine_presets),
     daily_items_config: normalizeDailyItemsConfig(data.daily_items_config),
     goal_settings: { ...defaults.goal_settings, ...(data.goal_settings ?? {}) },
@@ -304,7 +415,7 @@ export function ensureTodayLog(logs) {
   return ensureDailyLog(logs, formatDateKey())
 }
 
-export function computeYearlySummary(dailyLogs, weeklyMetrics, year) {
+export function computeYearlySummary(dailyLogs, runningRecords, year) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const todayKey = formatDateKey(today)
@@ -345,8 +456,8 @@ export function computeYearlySummary(dailyLogs, weeklyMetrics, year) {
     workoutDays++
   }
 
-  const yearMetrics = weeklyMetrics.filter((w) => w.date?.startsWith(String(year)))
-  const totalDistance = yearMetrics.reduce((s, w) => s + (w.distance || 0), 0)
+  const yearRuns = (runningRecords ?? []).filter((r) => r.date?.startsWith(String(year)))
+  const totalDistance = yearRuns.reduce((s, r) => s + (r.distance || 0), 0)
   const attendance = daysInYearSoFar
     ? Math.round((workoutDays / daysInYearSoFar) * 1000) / 10
     : 0

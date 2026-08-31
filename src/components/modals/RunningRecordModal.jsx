@@ -1,56 +1,43 @@
 import { useState, useEffect } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
 import Modal from '../Modal'
+import { createMeasurementId, sortByDate } from '../../utils/storage'
 
-export default function WeeklyDataModal({
+export default function RunningRecordModal({
   open,
   onClose,
-  metrics,
+  records,
   onSave,
   editEntry = null,
 }) {
   const isEdit = Boolean(editEntry)
-  const nextWeek = metrics.length > 0 ? Math.max(...metrics.map((m) => m.week)) + 1 : 1
-  const latest = metrics[metrics.length - 1]
+  const sorted = sortByDate(records)
+  const latest = sorted[sorted.length - 1]
 
-  const [form, setForm] = useState(emptyForm(isEdit, editEntry, nextWeek, latest))
+  const [form, setForm] = useState(emptyForm(isEdit, editEntry, latest))
 
   useEffect(() => {
     if (open) {
-      setForm(emptyForm(isEdit, editEntry, nextWeek, latest))
+      setForm(emptyForm(isEdit, editEntry, latest))
     }
-  }, [open, isEdit, editEntry, nextWeek, latest])
+  }, [open, isEdit, editEntry, latest])
 
   const handleSubmit = (e) => {
     e.preventDefault()
     const entry = {
-      week: Number(form.week),
+      id: isEdit ? editEntry.id : createMeasurementId('run'),
       date: form.date,
-      weight: Number(form.weight),
-      bodyFat: Number(form.bodyFat),
       distance: Number(form.distance),
       avgHr: Number(form.avgHr),
       pace: form.pace,
     }
 
-    const originalWeek = editEntry?.week
-    const duplicate = metrics.some(
-      (m) => m.week === entry.week && (!isEdit || m.week !== originalWeek),
-    )
-    if (duplicate) {
-      alert('이미 같은 주차 번호가 있습니다.')
-      return
-    }
-
     let updated
     if (isEdit) {
-      updated = metrics
-        .map((m) => (m.week === originalWeek ? entry : m))
-        .sort((a, b) => a.week - b.week)
+      updated = records.map((m) => (m.id === editEntry.id ? entry : m))
     } else {
-      updated = [...metrics, entry].sort((a, b) => a.week - b.week)
+      updated = [...records, entry]
     }
-    onSave(updated)
+    onSave(sortByDate(updated))
     onClose()
   }
 
@@ -58,40 +45,19 @@ export default function WeeklyDataModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? '✏️ 주간 데이터 수정' : '➕ 주간 데이터 기록'}
+      title={isEdit ? '✏️ 러닝 기록 수정' : '➕ 러닝 기록'}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <Field
-            label="주차"
-            type="number"
-            min={1}
-            max={52}
-            value={form.week}
-            onChange={(v) => setForm((p) => ({ ...p, week: v }))}
-          />
           <Field
             label="기록 날짜"
             type="date"
             value={form.date}
             onChange={(v) => setForm((p) => ({ ...p, date: v }))}
+            className="col-span-2"
           />
           <Field
-            label="체중 (kg)"
-            type="number"
-            step="0.1"
-            value={form.weight}
-            onChange={(v) => setForm((p) => ({ ...p, weight: v }))}
-          />
-          <Field
-            label="체지방률 (%)"
-            type="number"
-            step="0.1"
-            value={form.bodyFat}
-            onChange={(v) => setForm((p) => ({ ...p, bodyFat: v }))}
-          />
-          <Field
-            label="주말 러닝 (km)"
+            label="주행 거리 (km)"
             type="number"
             step="0.1"
             value={form.distance}
@@ -114,7 +80,7 @@ export default function WeeklyDataModal({
         </div>
         <button
           type="submit"
-          className="w-full py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-cyan-600 rounded-lg hover:from-indigo-500 hover:to-cyan-500 transition-all"
+          className="w-full py-2.5 text-sm font-medium text-white bg-gradient-to-r from-cyan-600 to-indigo-600 rounded-lg hover:from-cyan-500 hover:to-indigo-500 transition-all"
         >
           {isEdit ? '수정 저장' : '기록 저장'}
         </button>
@@ -123,23 +89,17 @@ export default function WeeklyDataModal({
   )
 }
 
-function emptyForm(isEdit, editEntry, nextWeek, latest) {
+function emptyForm(isEdit, editEntry, latest) {
   if (isEdit && editEntry) {
     return {
-      week: editEntry.week,
       date: editEntry.date ?? '',
-      weight: editEntry.weight,
-      bodyFat: editEntry.bodyFat,
       distance: editEntry.distance,
       avgHr: editEntry.avgHr,
       pace: editEntry.pace,
     }
   }
   return {
-    week: nextWeek,
     date: new Date().toISOString().slice(0, 10),
-    weight: latest?.weight ?? '',
-    bodyFat: latest?.bodyFat ?? '',
     distance: latest?.distance ?? '',
     avgHr: latest?.avgHr ?? '',
     pace: latest?.pace ?? '',
@@ -155,7 +115,7 @@ function Field({ label, type, value, onChange, className = '', ...rest }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required
-        className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+        className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
         {...rest}
       />
     </label>
