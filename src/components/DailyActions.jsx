@@ -84,10 +84,10 @@ export default function DailyActions({
               key={item.key}
               className={`check-card card-glow text-left p-4 rounded-xl border border-zinc-800/80 bg-zinc-900/60 ${checked ? 'checked' : ''}`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  {isEditing ? (
-                    <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2 min-w-0">
+                {isEditing ? (
+                  <>
+                    <div className="flex-1 min-w-0 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="text"
                         value={draftLabel}
@@ -101,70 +101,66 @@ export default function DailyActions({
                         }}
                         autoFocus
                         placeholder={defaultLabel}
-                        className="w-full px-2 py-1.5 text-base bg-zinc-800 border border-zinc-600 rounded-lg text-zinc-100"
+                        className="flex-1 min-w-0 px-2 py-1.5 text-base bg-zinc-800 border border-zinc-600 rounded-lg text-zinc-100"
                       />
-                      <div className="flex gap-2">
+                      {hasCustomLabel && (
                         <button
                           type="button"
-                          onClick={() => saveEdit(item.key)}
-                          className="flex-1 py-1 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded"
+                          onClick={() => resetLabel(item.key)}
+                          className="p-1 shrink-0 text-zinc-400 hover:text-zinc-200"
+                          title="설정 기본값으로"
                         >
-                          저장
+                          <RotateCcw size={12} />
                         </button>
-                        {hasCustomLabel && (
-                          <button
-                            type="button"
-                            onClick={() => resetLabel(item.key)}
-                            className="px-2 py-1 text-xs text-zinc-400 hover:text-zinc-200"
-                            title="설정 기본값으로"
-                          >
-                            <RotateCcw size={12} />
-                          </button>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => saveEdit(item.key)}
+                      className="shrink-0 px-2 py-1 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded"
+                    >
+                      저장
+                    </button>
+                  </>
+                ) : (
+                  <>
                     <Tooltip content={item.tooltip}>
                       <button
                         type="button"
                         onClick={() => handleToggle(item.key)}
-                        className="text-left w-full group/label"
+                        className="flex-1 min-w-0 text-left group/label"
                       >
-                        <p className="text-sm font-medium text-zinc-200 leading-snug group-hover/label:text-zinc-100">
+                        <p className="text-sm font-medium text-zinc-200 leading-snug truncate group-hover/label:text-zinc-100">
                           {item.emoji} {item.label}
                         </p>
                       </button>
                     </Tooltip>
-                  )}
-                </div>
-                <div className="flex flex-col items-center gap-1 shrink-0">
-                  {!isEditing && (
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
                         startEdit(item.key, item.label)
                       }}
-                      className="p-1 text-zinc-500 hover:text-cyan-400 transition-colors"
+                      className="p-1 shrink-0 text-zinc-500 hover:text-cyan-400 transition-colors"
                       aria-label="내용 수정"
                     >
                       <Pencil size={13} />
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleToggle(item.key)}
-                    disabled={isEditing}
-                    className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
-                      checked
-                        ? 'bg-emerald-500 border-emerald-500 text-white'
-                        : 'border-zinc-600 bg-zinc-800/50'
-                    } ${isEditing ? 'opacity-40 pointer-events-none' : ''}`}
-                    aria-label={checked ? '완료 해제' : '완료 표시'}
-                  >
-                    {checked && <Check size={14} strokeWidth={3} />}
-                  </button>
-                </div>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleToggle(item.key)}
+                  disabled={isEditing}
+                  className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
+                    checked
+                      ? 'bg-emerald-500 border-emerald-500 text-white'
+                      : 'border-zinc-600 bg-zinc-800/50'
+                  } ${isEditing ? 'opacity-40 pointer-events-none' : ''}`}
+                  aria-label={checked ? '완료 해제' : '완료 표시'}
+                >
+                  {checked && <Check size={14} strokeWidth={3} />}
+                </button>
               </div>
               {!isEditing && (
                 <p className="text-xs text-zinc-500 mt-2">
