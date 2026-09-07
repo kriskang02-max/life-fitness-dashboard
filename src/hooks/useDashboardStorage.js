@@ -2,15 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   loadAllData,
   saveAllData,
-  saveDailyLogs,
-  saveBodyMeasurements,
-  saveRunningRecords,
-  saveRoutinePresets,
-  saveDailyItemsConfig,
-  saveGoalSettings,
-  saveFocusCompassData,
-  saveMotivationVideos,
-  saveThoughtArchive,
   saveSyncSettings,
   readSyncMeta,
   saveSyncMeta,
@@ -27,6 +18,7 @@ import {
 function buildSyncPayload(data) {
   return {
     daily_logs: data.daily_logs,
+    diet_logs: data.diet_logs,
     body_measurements: data.body_measurements,
     running_records: data.running_records,
     routine_presets: data.routine_presets,
@@ -35,6 +27,7 @@ function buildSyncPayload(data) {
     focus_compass_data: data.focus_compass_data,
     motivation_videos: data.motivation_videos,
     thought_archive: data.thought_archive,
+    ai_settings: data.ai_settings,
   }
 }
 
@@ -291,6 +284,11 @@ export function useDashboardStorage() {
     [mutate],
   )
 
+  const updateDietLogs = useCallback(
+    (updater) => mutate((prev) => ({ ...prev, diet_logs: typeof updater === 'function' ? updater(prev.diet_logs) : updater })),
+    [mutate],
+  )
+
   const updateRunningRecords = useCallback(
     (updater) => mutate((prev) => ({
       ...prev,
@@ -335,6 +333,11 @@ export function useDashboardStorage() {
     [mutate],
   )
 
+  const updateAiSettings = useCallback(
+    (updater) => mutate((prev) => ({ ...prev, ai_settings: typeof updater === 'function' ? updater(prev.ai_settings) : updater })),
+    [mutate],
+  )
+
   const updateSyncSettings = useCallback(
     (settings) => {
       saveSyncSettings(settings)
@@ -359,6 +362,7 @@ export function useDashboardStorage() {
     syncStatus,
     syncMessage,
     updateDailyLogs,
+    updateDietLogs,
     updateBodyMeasurements,
     updateRunningRecords,
     updateRoutinePresets,
@@ -367,6 +371,7 @@ export function useDashboardStorage() {
     updateFocusCompassData,
     updateMotivationVideos,
     updateThoughtArchive,
+    updateAiSettings,
     updateSyncSettings,
     replaceAllData,
     refresh,

@@ -1,5 +1,6 @@
 export const STORAGE_KEYS = {
   daily_logs: 'daily_logs',
+  diet_logs: 'diet_logs',
   body_measurements: 'body_measurements',
   running_records: 'running_records',
   /** @deprecated migrated to body_measurements + running_records */
@@ -10,6 +11,7 @@ export const STORAGE_KEYS = {
   thought_archive: 'thought_archive',
   focus_compass_data: 'focus_compass_data',
   motivation_videos: 'motivation_videos',
+  ai_settings: 'ai_settings',
   sync_settings: 'sync_settings',
   sync_meta: 'sync_meta',
 }
@@ -106,6 +108,14 @@ export const DEFAULT_SYNC_SETTINGS = {
   ...BUILTIN_SUPABASE,
   gistToken: '',
   gistId: '',
+}
+
+export const DEFAULT_AI_SETTINGS = {
+  provider: 'gemini',
+  geminiApiKey: '',
+  geminiModel: 'gemini-1.5-flash',
+  openaiApiKey: '',
+  openaiModel: 'gpt-4o-mini',
 }
 
 /** @deprecated use daily_items_config */

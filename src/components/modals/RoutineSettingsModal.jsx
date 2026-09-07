@@ -6,6 +6,7 @@ import {
   DAILY_CHECK_KEYS,
   DAILY_CHECK_LABELS,
   DEFAULT_DAILY_ITEMS_CONFIG,
+  DEFAULT_AI_SETTINGS,
 } from '../../utils/constants'
 
 export default function RoutineSettingsModal({
@@ -13,20 +14,24 @@ export default function RoutineSettingsModal({
   onClose,
   routinePresets,
   dailyItemsConfig,
+  aiSettings,
   onSaveWeekdays,
   onSaveDailyItems,
+  onSaveAiSettings,
 }) {
   const [tab, setTab] = useState('weekdays')
   const [weekdays, setWeekdays] = useState(routinePresets)
   const [items, setItems] = useState(dailyItemsConfig)
+  const [ai, setAi] = useState(aiSettings)
 
   useEffect(() => {
     if (open) {
       setWeekdays({ ...routinePresets })
       setItems({ ...dailyItemsConfig })
+      setAi({ ...DEFAULT_AI_SETTINGS, ...(aiSettings ?? {}) })
       setTab('weekdays')
     }
-  }, [open, routinePresets, dailyItemsConfig])
+  }, [open, routinePresets, dailyItemsConfig, aiSettings])
 
   const updateItem = (key, field, value) => {
     setItems((prev) => ({
@@ -38,6 +43,7 @@ export default function RoutineSettingsModal({
   const handleSave = () => {
     onSaveWeekdays(weekdays)
     onSaveDailyItems(items)
+    onSaveAiSettings(ai)
     onClose()
   }
 
@@ -57,6 +63,13 @@ export default function RoutineSettingsModal({
           className={`px-3 py-1.5 text-xs rounded-lg border ${tab === 'items' ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400' : 'border-zinc-700 text-zinc-400'}`}
         >
           체크박스 4종 커스텀
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('ai')}
+          className={`px-3 py-1.5 text-xs rounded-lg border ${tab === 'ai' ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300' : 'border-zinc-700 text-zinc-400'}`}
+        >
+          AI 파서
         </button>
       </div>
 
@@ -119,6 +132,63 @@ export default function RoutineSettingsModal({
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {tab === 'ai' && (
+        <div className="space-y-4">
+          <p className="text-xs text-zinc-500">
+            Diet & Nutrition 페이지에서 식사 텍스트를 파싱할 때 사용할 모델을 설정합니다.
+          </p>
+
+          <label className="block">
+            <span className="text-xs text-zinc-400 mb-1 block">우선 파서</span>
+            <select
+              value={ai.provider ?? 'gemini'}
+              onChange={(e) => setAi((prev) => ({ ...prev, provider: e.target.value }))}
+              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+            >
+              <option value="gemini">Gemini</option>
+              <option value="openai">OpenAI</option>
+              <option value="auto">Auto (키가 있는 순서대로)</option>
+            </select>
+          </label>
+
+          <div className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 space-y-2">
+            <p className="text-xs text-emerald-400 font-medium">Gemini</p>
+            <input
+              type="password"
+              value={ai.geminiApiKey ?? ''}
+              onChange={(e) => setAi((prev) => ({ ...prev, geminiApiKey: e.target.value }))}
+              placeholder="Gemini API Key"
+              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+            />
+            <input
+              type="text"
+              value={ai.geminiModel ?? 'gemini-1.5-flash'}
+              onChange={(e) => setAi((prev) => ({ ...prev, geminiModel: e.target.value }))}
+              placeholder="gemini-1.5-flash"
+              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+            />
+          </div>
+
+          <div className="p-3 rounded-lg border border-cyan-500/20 bg-cyan-500/5 space-y-2">
+            <p className="text-xs text-cyan-400 font-medium">OpenAI</p>
+            <input
+              type="password"
+              value={ai.openaiApiKey ?? ''}
+              onChange={(e) => setAi((prev) => ({ ...prev, openaiApiKey: e.target.value }))}
+              placeholder="OpenAI API Key"
+              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+            />
+            <input
+              type="text"
+              value={ai.openaiModel ?? 'gpt-4o-mini'}
+              onChange={(e) => setAi((prev) => ({ ...prev, openaiModel: e.target.value }))}
+              placeholder="gpt-4o-mini"
+              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+            />
+          </div>
         </div>
       )}
 

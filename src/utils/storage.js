@@ -1,4 +1,13 @@
-import { STORAGE_KEYS, DEFAULT_DAILY_ITEMS_CONFIG, DEFAULT_GOAL_SETTINGS, DEFAULT_SYNC_SETTINGS, BUILTIN_SUPABASE, DEFAULT_FOCUS_COMPASS_DATA, DEFAULT_MOTIVATION_VIDEOS } from './constants'
+import {
+  STORAGE_KEYS,
+  DEFAULT_DAILY_ITEMS_CONFIG,
+  DEFAULT_GOAL_SETTINGS,
+  DEFAULT_SYNC_SETTINGS,
+  BUILTIN_SUPABASE,
+  DEFAULT_FOCUS_COMPASS_DATA,
+  DEFAULT_MOTIVATION_VIDEOS,
+  DEFAULT_AI_SETTINGS,
+} from './constants'
 import { formatDateKey } from './dates'
 
 function generateMockDailyLogs() {
@@ -199,9 +208,70 @@ export function normalizeMotivationVideos(raw) {
   return { activeVideoId, playlist }
 }
 
+function normalizeMealItems(items) {
+  if (!Array.isArray(items)) return []
+  return items
+    .filter((item) => item?.name)
+    .map((item) => ({
+      name: String(item.name).trim(),
+      amount: String(item.amount ?? '').trim(),
+      calories: Number(item.calories) || 0,
+      protein: Number(item.protein) || 0,
+      carbs: Number(item.carbs) || 0,
+      fat: Number(item.fat) || 0,
+    }))
+}
+
+function normalizeMealLog(entry) {
+  const items = normalizeMealItems(entry?.items)
+  const totals = {
+    calories: Number(entry?.totals?.calories) || items.reduce((sum, item) => sum + (item.calories || 0), 0),
+    protein: Number(entry?.totals?.protein) || items.reduce((sum, item) => sum + (item.protein || 0), 0),
+    carbs: Number(entry?.totals?.carbs) || items.reduce((sum, item) => sum + (item.carbs || 0), 0),
+    fat: Number(entry?.totals?.fat) || items.reduce((sum, item) => sum + (item.fat || 0), 0),
+  }
+
+  return {
+    id: String(entry?.id ?? createMeasurementId('meal')),
+    text: String(entry?.text ?? '').trim(),
+    source: String(entry?.source ?? 'manual'),
+    provider: entry?.provider ? String(entry.provider) : null,
+    model: entry?.model ? String(entry.model) : null,
+    confidence: Number(entry?.confidence) || 0,
+    createdAt: String(entry?.createdAt ?? new Date().toISOString()),
+    items,
+    totals,
+  }
+}
+
+export function normalizeDietLogs(raw) {
+  if (!raw || typeof raw !== 'object') return {}
+  const normalized = {}
+  for (const [dateKey, value] of Object.entries(raw)) {
+    const meals = Array.isArray(value?.meals)
+      ? value.meals.map(normalizeMealLog).filter((meal) => meal.items.length > 0 || meal.text)
+      : []
+    normalized[dateKey] = { meals }
+  }
+  return normalized
+}
+
+export function normalizeAiSettings(raw) {
+  const merged = { ...DEFAULT_AI_SETTINGS, ...(raw ?? {}) }
+  return {
+    ...merged,
+    provider: ['gemini', 'openai', 'auto'].includes(merged.provider) ? merged.provider : 'gemini',
+    geminiApiKey: String(merged.geminiApiKey ?? ''),
+    geminiModel: String(merged.geminiModel ?? DEFAULT_AI_SETTINGS.geminiModel),
+    openaiApiKey: String(merged.openaiApiKey ?? ''),
+    openaiModel: String(merged.openaiModel ?? DEFAULT_AI_SETTINGS.openaiModel),
+  }
+}
+
 export function getDefaultData() {
   return {
     daily_logs: generateMockDailyLogs(),
+    diet_logs: {},
     body_measurements: [...DEFAULT_BODY_MEASUREMENTS],
     running_records: [...DEFAULT_RUNNING_RECORDS],
     routine_presets: { ...DEFAULT_ROUTINE_PRESETS },
@@ -210,6 +280,7 @@ export function getDefaultData() {
     focus_compass_data: normalizeFocusCompassData(null),
     motivation_videos: normalizeMotivationVideos(null),
     thought_archive: [...DEFAULT_THOUGHT_ARCHIVE],
+    ai_settings: normalizeAiSettings(null),
     sync_settings: normalizeSyncSettings(null),
   }
 }
@@ -255,6 +326,7 @@ export function loadAllData() {
 
   return {
     daily_logs: readJSON(STORAGE_KEYS.daily_logs, defaults.daily_logs),
+    diet_logs: normalizeDietLogs(readJSON(STORAGE_KEYS.diet_logs, defaults.diet_logs)),
     body_measurements: measurements.body_measurements,
     running_records: measurements.running_records,
     routine_presets: normalizeWeekdays(readJSON(STORAGE_KEYS.routine_presets, null)),
@@ -263,12 +335,14 @@ export function loadAllData() {
     focus_compass_data: normalizeFocusCompassData(focusRaw, goalSettings),
     motivation_videos: normalizeMotivationVideos(readJSON(STORAGE_KEYS.motivation_videos, null)),
     thought_archive: readJSON(STORAGE_KEYS.thought_archive, defaults.thought_archive),
+    ai_settings: normalizeAiSettings(readJSON(STORAGE_KEYS.ai_settings, null)),
     sync_settings: normalizeSyncSettings(readJSON(STORAGE_KEYS.sync_settings, null)),
   }
 }
 
 export function saveAllData(data) {
   saveDailyLogs(data.daily_logs)
+  saveDietLogs(data.diet_logs)
   saveBodyMeasurements(data.body_measurements)
   saveRunningRecords(data.running_records)
   saveRoutinePresets(data.routine_presets)
@@ -277,11 +351,16 @@ export function saveAllData(data) {
   saveFocusCompassData(data.focus_compass_data)
   saveMotivationVideos(data.motivation_videos)
   saveThoughtArchive(data.thought_archive)
+  saveAiSettings(data.ai_settings)
   if (data.sync_settings) saveSyncSettings(data.sync_settings)
 }
 
 export function saveDailyLogs(logs) {
   writeJSON(STORAGE_KEYS.daily_logs, logs)
+}
+
+export function saveDietLogs(logs) {
+  writeJSON(STORAGE_KEYS.diet_logs, normalizeDietLogs(logs))
 }
 
 export function saveBodyMeasurements(items) {
@@ -321,6 +400,10 @@ export function saveThoughtArchive(archive) {
   writeJSON(STORAGE_KEYS.thought_archive, archive)
 }
 
+export function saveAiSettings(settings) {
+  writeJSON(STORAGE_KEYS.ai_settings, normalizeAiSettings(settings))
+}
+
 export function saveSyncSettings(settings) {
   writeJSON(STORAGE_KEYS.sync_settings, normalizeSyncSettings(settings))
 }
@@ -352,6 +435,7 @@ export function importAllData(data) {
   const measurements = resolveMeasurementData(data)
   const merged = {
     daily_logs: data.daily_logs ?? defaults.daily_logs,
+    diet_logs: normalizeDietLogs(data.diet_logs ?? defaults.diet_logs),
     body_measurements: measurements.body_measurements,
     running_records: measurements.running_records,
     routine_presets: normalizeWeekdays(data.routine_presets),
@@ -360,6 +444,7 @@ export function importAllData(data) {
     focus_compass_data: normalizeFocusCompassData(data.focus_compass_data, data.goal_settings),
     motivation_videos: normalizeMotivationVideos(data.motivation_videos),
     thought_archive: data.thought_archive ?? defaults.thought_archive,
+    ai_settings: normalizeAiSettings(data.ai_settings),
     sync_settings: normalizeSyncSettings(data.sync_settings),
   }
   saveAllData(merged)
@@ -406,6 +491,16 @@ export function ensureDailyLog(logs, dateKey) {
     return {
       ...logs,
       [dateKey]: { workout: false, diet: false, dopamine: false, read: false },
+    }
+  }
+  return logs
+}
+
+export function ensureDietLog(logs, dateKey) {
+  if (!logs?.[dateKey]) {
+    return {
+      ...(logs ?? {}),
+      [dateKey]: { meals: [] },
     }
   }
   return logs
