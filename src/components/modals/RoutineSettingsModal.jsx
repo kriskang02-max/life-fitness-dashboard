@@ -35,6 +35,8 @@ export default function RoutineSettingsModal({
       setAi({ ...DEFAULT_AI_SETTINGS, ...(aiSettings ?? {}) })
       setNutrition({
         calorieGoal: nutritionTargets?.calorieGoal ?? DEFAULT_NUTRITION_TARGETS.calorieGoal,
+        sugarLimit: nutritionTargets?.sugarLimit ?? DEFAULT_NUTRITION_TARGETS.sugarLimit,
+        sodiumLimit: nutritionTargets?.sodiumLimit ?? DEFAULT_NUTRITION_TARGETS.sodiumLimit,
         macroRatio: {
           carbs: nutritionTargets?.macroRatio?.carbs ?? DEFAULT_NUTRITION_TARGETS.macroRatio.carbs,
           protein: nutritionTargets?.macroRatio?.protein ?? DEFAULT_NUTRITION_TARGETS.macroRatio.protein,
@@ -202,6 +204,42 @@ export default function RoutineSettingsModal({
               }
               className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="p-3 rounded-lg border border-orange-500/20 bg-orange-500/5 space-y-2">
+              <p className="text-xs text-orange-300 font-medium">당류 상한 (g)</p>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={nutrition?.sugarLimit ?? DEFAULT_NUTRITION_TARGETS.sugarLimit}
+                onChange={(e) =>
+                  setNutrition((prev) => ({
+                    ...(prev ?? {}),
+                    sugarLimit: Number(e.target.value || DEFAULT_NUTRITION_TARGETS.sugarLimit),
+                  }))
+                }
+                className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+              />
+            </div>
+
+            <div className="p-3 rounded-lg border border-sky-500/20 bg-sky-500/5 space-y-2">
+              <p className="text-xs text-sky-300 font-medium">나트륨 상한 (mg)</p>
+              <input
+                type="number"
+                min="1"
+                step="10"
+                value={nutrition?.sodiumLimit ?? DEFAULT_NUTRITION_TARGETS.sodiumLimit}
+                onChange={(e) =>
+                  setNutrition((prev) => ({
+                    ...(prev ?? {}),
+                    sodiumLimit: Number(e.target.value || DEFAULT_NUTRITION_TARGETS.sodiumLimit),
+                  }))
+                }
+                className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+              />
+            </div>
           </div>
 
           <div className="p-3 rounded-lg border border-cyan-500/20 bg-cyan-500/5 space-y-3">

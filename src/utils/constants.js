@@ -120,6 +120,8 @@ export const DEFAULT_AI_SETTINGS = {
 
 export const DEFAULT_NUTRITION_TARGETS = {
   calorieGoal: 1800,
+  sugarLimit: 30,
+  sodiumLimit: 2000,
   macroRatio: {
     carbs: 40,
     protein: 35,

@@ -15,9 +15,9 @@ const SLOT_META = [
 ]
 
 const DEFAULT_CALORIE_GOAL = 1800
+const DEFAULT_SUGAR_LIMIT = 30
+const DEFAULT_SODIUM_LIMIT = 2000
 const DEFAULT_TARGET_MACRO_RATIO = { carbs: 40, protein: 35, fat: 25 }
-const SUGAR_LIMIT = 30
-const SODIUM_LIMIT = 2000
 
 function sumDayTotals(mealList) {
   return mealList.reduce(
@@ -142,6 +142,8 @@ export default function DietNutrition({
   )
   const totals = useMemo(() => sumDayTotals(dailyMeals), [dailyMeals])
   const calorieGoal = Math.max(100, Number(nutritionTargets?.calorieGoal) || DEFAULT_CALORIE_GOAL)
+  const sugarLimit = Math.max(1, Number(nutritionTargets?.sugarLimit) || DEFAULT_SUGAR_LIMIT)
+  const sodiumLimit = Math.max(1, Number(nutritionTargets?.sodiumLimit) || DEFAULT_SODIUM_LIMIT)
   const targetMacroRatio = nutritionTargets?.macroRatio ?? DEFAULT_TARGET_MACRO_RATIO
 
   const macroCalories = useMemo(
@@ -196,8 +198,8 @@ export default function DietNutrition({
 
   const indicator = useMemo(() => findLastMealIndicator(currentSlots), [currentSlots])
   const calorieProgress = Math.min(100, (totals.calories / calorieGoal) * 100)
-  const sugarProgress = Math.min(100, (totals.sugar / SUGAR_LIMIT) * 100)
-  const sodiumProgress = Math.min(100, (totals.sodium / SODIUM_LIMIT) * 100)
+  const sugarProgress = Math.min(100, (totals.sugar / sugarLimit) * 100)
+  const sodiumProgress = Math.min(100, (totals.sodium / sodiumLimit) * 100)
 
   const updateDraft = (slotKey, field, value) => {
     setDrafts((prev) => ({
@@ -345,12 +347,12 @@ export default function DietNutrition({
           <div className="flex items-center justify-between">
             <p className="text-sm text-zinc-300">클린 섭취 케어 바</p>
             <div className="flex items-center gap-2">
-              {totals.sugar > SUGAR_LIMIT && (
+              {totals.sugar > sugarLimit && (
                 <span className="text-[11px] px-2 py-1 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-300">
                   ⚠️ 당류 과다 주의
                 </span>
               )}
-              {totals.sodium > SODIUM_LIMIT && (
+              {totals.sodium > sodiumLimit && (
                 <span className="text-[11px] px-2 py-1 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-300">
                   ⚠️ 나트륨 과다 (붓기·수분정체 주의)
                 </span>
@@ -361,7 +363,7 @@ export default function DietNutrition({
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-zinc-400">당류</span>
-              <span className="text-orange-300">{fmt(totals.sugar)} / {SUGAR_LIMIT}g</span>
+              <span className="text-orange-300">{fmt(totals.sugar)} / {sugarLimit}g</span>
             </div>
             <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
               <div className="h-full bg-gradient-to-r from-orange-400 to-amber-500" style={{ width: `${sugarProgress}%` }} />
@@ -371,7 +373,7 @@ export default function DietNutrition({
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-zinc-400">나트륨</span>
-              <span className="text-sky-300">{fmt(totals.sodium, 'mg')} / {SODIUM_LIMIT}mg</span>
+              <span className="text-sky-300">{fmt(totals.sodium, 'mg')} / {sodiumLimit}mg</span>
             </div>
             <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
               <div className="h-full bg-gradient-to-r from-sky-400 to-cyan-500" style={{ width: `${sodiumProgress}%` }} />

@@ -175,6 +175,8 @@ export function normalizeSyncSettings(raw) {
 export function normalizeNutritionTargets(raw) {
   const fallback = { ...DEFAULT_NUTRITION_TARGETS, macroRatio: { ...DEFAULT_NUTRITION_TARGETS.macroRatio } }
   const calorieGoal = Number(raw?.calorieGoal)
+  const sugarLimit = Number(raw?.sugarLimit)
+  const sodiumLimit = Number(raw?.sodiumLimit)
   const macroRaw = raw?.macroRatio ?? {}
   const carbsRaw = Number(macroRaw.carbs)
   const proteinRaw = Number(macroRaw.protein)
@@ -200,6 +202,8 @@ export function normalizeNutritionTargets(raw) {
 
   return {
     calorieGoal: Number.isFinite(calorieGoal) ? Math.max(100, Math.round(calorieGoal)) : fallback.calorieGoal,
+    sugarLimit: Number.isFinite(sugarLimit) ? Math.max(1, Math.round(sugarLimit)) : fallback.sugarLimit,
+    sodiumLimit: Number.isFinite(sodiumLimit) ? Math.max(1, Math.round(sodiumLimit)) : fallback.sodiumLimit,
     macroRatio,
   }
 }
