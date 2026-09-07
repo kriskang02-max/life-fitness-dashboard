@@ -1,15 +1,33 @@
 const FOOD_REFERENCE = [
   {
+    name: '장어',
+    aliases: ['장어', '민물장어', 'eel'],
+    base: { kind: 'count', amount: 1 },
+    nutrition: { calories: 300, protein: 28, carbs: 0, fat: 20 },
+  },
+  {
+    name: '밥',
+    aliases: ['밥', '쌀밥', '공기밥', 'rice'],
+    base: { kind: 'count', amount: 1 },
+    nutrition: { calories: 300, protein: 6, carbs: 67, fat: 1 },
+  },
+  {
+    name: '밑반찬',
+    aliases: ['밑반찬', '반찬'],
+    base: { kind: 'count', amount: 1 },
+    nutrition: { calories: 50, protein: 2, carbs: 8, fat: 1 },
+  },
+  {
+    name: '제로콜라',
+    aliases: ['제로콜라', '제로 콜라', '제로음료', 'zero cola', 'diet cola'],
+    base: { kind: 'count', amount: 1 },
+    nutrition: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+  },
+  {
     name: '닭가슴살',
     aliases: ['닭가슴살', 'chicken breast'],
     base: { kind: 'g', amount: 100 },
     nutrition: { calories: 165, protein: 31, carbs: 0, fat: 3.6 },
-  },
-  {
-    name: '밥',
-    aliases: ['밥', '쌀밥', 'rice'],
-    base: { kind: 'count', amount: 1 },
-    nutrition: { calories: 300, protein: 6, carbs: 67, fat: 1 },
   },
   {
     name: '계란',
@@ -18,22 +36,16 @@ const FOOD_REFERENCE = [
     nutrition: { calories: 78, protein: 6.3, carbs: 0.6, fat: 5.3 },
   },
   {
-    name: '바나나',
-    aliases: ['바나나', 'banana'],
-    base: { kind: 'count', amount: 1 },
-    nutrition: { calories: 105, protein: 1.3, carbs: 27, fat: 0.3 },
-  },
-  {
     name: '고구마',
     aliases: ['고구마', 'sweet potato'],
     base: { kind: 'g', amount: 100 },
     nutrition: { calories: 86, protein: 1.6, carbs: 20.1, fat: 0.1 },
   },
   {
-    name: '프로틴 쉐이크',
-    aliases: ['프로틴', '단백질쉐이크', 'whey', 'protein shake'],
-    base: { kind: 'count', amount: 1 },
-    nutrition: { calories: 120, protein: 24, carbs: 3, fat: 1.5 },
+    name: '연어',
+    aliases: ['연어', 'salmon'],
+    base: { kind: 'g', amount: 100 },
+    nutrition: { calories: 208, protein: 20, carbs: 0, fat: 13 },
   },
   {
     name: '두부',
@@ -42,10 +54,16 @@ const FOOD_REFERENCE = [
     nutrition: { calories: 76, protein: 8, carbs: 1.9, fat: 4.8 },
   },
   {
-    name: '연어',
-    aliases: ['연어', 'salmon'],
-    base: { kind: 'g', amount: 100 },
-    nutrition: { calories: 208, protein: 20, carbs: 0, fat: 13 },
+    name: '프로틴 쉐이크',
+    aliases: ['프로틴', '단백질쉐이크', 'whey', 'protein shake'],
+    base: { kind: 'count', amount: 1 },
+    nutrition: { calories: 120, protein: 24, carbs: 3, fat: 1.5 },
+  },
+  {
+    name: '바나나',
+    aliases: ['바나나', 'banana'],
+    base: { kind: 'count', amount: 1 },
+    nutrition: { calories: 105, protein: 1.3, carbs: 27, fat: 0.3 },
   },
   {
     name: '오트밀',
@@ -67,16 +85,23 @@ function extractNumber(pattern, text) {
 }
 
 function extractQuantity(text) {
-  const grams = extractNumber(/(\d+(?:\.\d+)?)\s*g\b/i, text)
-  if (grams != null) return { kind: 'g', amount: grams }
+  const normalized = text.replace(/\s+/g, ' ')
+  const halfServing = normalized.match(/반\s*(공기|마리|개|알|캔|인분|컵|조각|봉지|병|잔)/i)
+  if (halfServing) return { kind: 'count', amount: 0.5 }
 
-  const ml = extractNumber(/(\d+(?:\.\d+)?)\s*ml\b/i, text)
-  if (ml != null) return { kind: 'ml', amount: ml }
+  const qtyMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(kg|g|그램|l|ml|마리|공기|개|알|스쿱|인분|조각|컵|봉지|캔|병|잔)/i)
+  if (qtyMatch) {
+    const amount = Number(qtyMatch[1])
+    const unit = qtyMatch[2].toLowerCase()
 
-  const count = extractNumber(/(\d+(?:\.\d+)?)\s*(개|알|스쿱|공기|인분|조각|컵|봉지)\b/i, text)
-  if (count != null) return { kind: 'count', amount: count }
+    if (unit === 'kg') return { kind: 'g', amount: amount * 1000 }
+    if (unit === 'g' || unit === '그램') return { kind: 'g', amount }
+    if (unit === 'l') return { kind: 'ml', amount: amount * 1000 }
+    if (unit === 'ml') return { kind: 'ml', amount }
+    return { kind: 'count', amount }
+  }
 
-  const times = extractNumber(/x\s*(\d+(?:\.\d+)?)/i, text)
+  const times = extractNumber(/x\s*(\d+(?:\.\d+)?)/i, normalized)
   if (times != null) return { kind: 'count', amount: times }
 
   return { kind: 'count', amount: 1 }
@@ -153,7 +178,7 @@ function parseByReference(chunk) {
 
   return {
     name: reference.name,
-    amount: amountText,
+    amount: amountText.replace('.0', ''),
     ...nutrition,
   }
 }
@@ -172,7 +197,8 @@ export function sumNutrition(items) {
 
 export function heuristicParseNutrition(text) {
   const chunks = String(text ?? '')
-    .split(/\n|,|\/|\+/)
+    .replace(/[|]/g, ',')
+    .split(/\n|,|\/|\+|·/)
     .map((chunk) => chunk.trim())
     .filter(Boolean)
 

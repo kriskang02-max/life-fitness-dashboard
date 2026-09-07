@@ -144,17 +144,29 @@ async function parseWithOpenAI(text, settings) {
 
 function resolveProviderOrder(settings) {
   const selected = settings?.provider ?? 'gemini'
+  const hasGemini = Boolean(settings?.geminiApiKey?.trim())
+  const hasOpenAI = Boolean(settings?.openaiApiKey?.trim())
+
   if (selected === 'auto') {
     const order = []
-    if (settings?.geminiApiKey?.trim()) order.push('gemini')
-    if (settings?.openaiApiKey?.trim()) order.push('openai')
-    return order.length > 0 ? order : ['gemini', 'openai']
+    if (hasGemini) order.push('gemini')
+    if (hasOpenAI) order.push('openai')
+    return order
+  }
+  if (selected === 'gemini') {
+    return hasGemini ? ['gemini'] : []
+  }
+  if (selected === 'openai') {
+    return hasOpenAI ? ['openai'] : []
   }
   return [selected]
 }
 
 function wrapResult(result) {
   const items = normalizeItems(result.items)
+  if (items.length === 0) {
+    throw new Error('AI 응답에서 유효한 음식 항목을 찾지 못했습니다.')
+  }
   return {
     items,
     totals: sumNutrition(items),
@@ -172,6 +184,17 @@ export async function parseNutritionText(text, settings) {
 
   const order = resolveProviderOrder(settings)
   const errors = []
+
+  if (order.length === 0) {
+    const fallback = heuristicParseNutrition(trimmed)
+    return {
+      ...fallback,
+      source: 'heuristic',
+      provider: 'heuristic',
+      model: 'local-heuristic',
+      notes: fallback.notes,
+    }
+  }
 
   for (const provider of order) {
     try {
@@ -192,6 +215,6 @@ export async function parseNutritionText(text, settings) {
     source: 'heuristic',
     provider: 'heuristic',
     model: 'local-heuristic',
-    notes: errors.length > 0 ? `${fallback.notes} (AI 실패: ${errors.join(' | ')})` : fallback.notes,
+    notes: fallback.notes,
   }
 }

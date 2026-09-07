@@ -7,6 +7,7 @@ import {
   DEFAULT_FOCUS_COMPASS_DATA,
   DEFAULT_MOTIVATION_VIDEOS,
   DEFAULT_AI_SETTINGS,
+  MEAL_SLOT_KEYS,
 } from './constants'
 import { formatDateKey } from './dates'
 
@@ -222,6 +223,13 @@ function normalizeMealItems(items) {
     }))
 }
 
+export function createEmptyDietSlots() {
+  return MEAL_SLOT_KEYS.reduce((acc, key) => {
+    acc[key] = null
+    return acc
+  }, {})
+}
+
 function normalizeMealLog(entry) {
   const items = normalizeMealItems(entry?.items)
   const totals = {
@@ -233,6 +241,8 @@ function normalizeMealLog(entry) {
 
   return {
     id: String(entry?.id ?? createMeasurementId('meal')),
+    slot: entry?.slot ? String(entry.slot) : null,
+    time: String(entry?.time ?? ''),
     text: String(entry?.text ?? '').trim(),
     source: String(entry?.source ?? 'manual'),
     provider: entry?.provider ? String(entry.provider) : null,
@@ -248,10 +258,30 @@ export function normalizeDietLogs(raw) {
   if (!raw || typeof raw !== 'object') return {}
   const normalized = {}
   for (const [dateKey, value] of Object.entries(raw)) {
-    const meals = Array.isArray(value?.meals)
-      ? value.meals.map(normalizeMealLog).filter((meal) => meal.items.length > 0 || meal.text)
-      : []
-    normalized[dateKey] = { meals }
+    const slots = createEmptyDietSlots()
+
+    if (value?.slots && typeof value.slots === 'object') {
+      for (const slotKey of MEAL_SLOT_KEYS) {
+        const rawSlot = value.slots[slotKey]
+        if (!rawSlot) continue
+        const meal = normalizeMealLog({ ...rawSlot, slot: slotKey })
+        if (meal.items.length > 0 || meal.text) slots[slotKey] = meal
+      }
+    } else if (Array.isArray(value?.meals)) {
+      // Legacy migration: map previous meal list to morning→lunch→dinner→snack order.
+      const legacy = value.meals
+        .map(normalizeMealLog)
+        .filter((meal) => meal.items.length > 0 || meal.text)
+
+      for (let i = 0; i < MEAL_SLOT_KEYS.length; i++) {
+        const slotKey = MEAL_SLOT_KEYS[i]
+        const meal = legacy[i]
+        if (!meal) continue
+        slots[slotKey] = { ...meal, slot: slotKey }
+      }
+    }
+
+    normalized[dateKey] = { slots }
   }
   return normalized
 }
@@ -497,13 +527,23 @@ export function ensureDailyLog(logs, dateKey) {
 }
 
 export function ensureDietLog(logs, dateKey) {
-  if (!logs?.[dateKey]) {
+  const target = logs?.[dateKey]
+  if (!target || !target.slots) {
     return {
       ...(logs ?? {}),
-      [dateKey]: { meals: [] },
+      [dateKey]: { slots: createEmptyDietSlots() },
     }
   }
-  return logs
+
+  const mergedSlots = {
+    ...createEmptyDietSlots(),
+    ...target.slots,
+  }
+
+  return {
+    ...(logs ?? {}),
+    [dateKey]: { ...target, slots: mergedSlots },
+  }
 }
 
 export function ensureTodayLog(logs) {

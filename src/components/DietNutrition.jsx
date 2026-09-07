@@ -1,19 +1,33 @@
-import { useMemo, useState } from 'react'
-import { Sparkles, Plus } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Doughnut } from 'react-chartjs-2'
+import '../chartSetup.js'
 import DateNavigator from './DateNavigator'
 import MealCard from './MealCard'
 import { formatDateKey } from '../utils/dates'
-import { createMeasurementId, ensureDietLog } from '../utils/storage'
+import { createMeasurementId, createEmptyDietSlots, ensureDietLog } from '../utils/storage'
 import { parseNutritionText } from '../utils/nutritionParser'
 
-function sumDayTotals(meals) {
-  return meals.reduce(
-    (acc, meal) => ({
-      calories: acc.calories + (Number(meal?.totals?.calories) || 0),
-      protein: acc.protein + (Number(meal?.totals?.protein) || 0),
-      carbs: acc.carbs + (Number(meal?.totals?.carbs) || 0),
-      fat: acc.fat + (Number(meal?.totals?.fat) || 0),
-    }),
+const SLOT_META = [
+  { key: 'morning', label: '아침', emoji: '🌅', defaultTime: '07:30' },
+  { key: 'lunch', label: '점심', emoji: '☀️', defaultTime: '12:30' },
+  { key: 'dinner', label: '저녁', emoji: '🌙', defaultTime: '18:30' },
+  { key: 'snack', label: '간식·야식', emoji: '☕', defaultTime: '21:30' },
+]
+
+const CALORIE_GOAL = 1800
+const TARGET_MACRO_RATIO = { carbs: 40, protein: 35, fat: 25 }
+
+function sumDayTotals(mealList) {
+  return mealList.reduce(
+    (acc, meal) => {
+      if (!meal) return acc
+      return {
+        calories: acc.calories + (Number(meal?.totals?.calories) || 0),
+        protein: acc.protein + (Number(meal?.totals?.protein) || 0),
+        carbs: acc.carbs + (Number(meal?.totals?.carbs) || 0),
+        fat: acc.fat + (Number(meal?.totals?.fat) || 0),
+      }
+    },
     { calories: 0, protein: 0, carbs: 0, fat: 0 },
   )
 }
@@ -24,6 +38,65 @@ function fmt(value, unit = 'g') {
   return `${display}${unit}`
 }
 
+function initialDraftsFromSlots(slots) {
+  const draft = {}
+  for (const slot of SLOT_META) {
+    draft[slot.key] = {
+      time: slots?.[slot.key]?.time || slot.defaultTime,
+      text: slots?.[slot.key]?.text || '',
+    }
+  }
+  return draft
+}
+
+function parseTimeToMinutes(timeText) {
+  if (!timeText || !/^\d{2}:\d{2}$/.test(timeText)) return null
+  const [hh, mm] = timeText.split(':').map(Number)
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null
+  return hh * 60 + mm
+}
+
+function findLastMealIndicator(slots) {
+  const candidates = ['dinner', 'snack']
+    .map((key) => {
+      const meal = slots?.[key]
+      if (!meal?.text || !meal?.time) return null
+      const minutes = parseTimeToMinutes(meal.time)
+      if (minutes == null) return null
+      return { slot: key, time: meal.time, minutes }
+    })
+    .filter(Boolean)
+
+  if (candidates.length === 0) {
+    return {
+      badge: '⚪ 기록 대기',
+      detail: '저녁/야식 시간이 아직 기록되지 않았습니다.',
+      tone: 'border-zinc-700 bg-zinc-800/40 text-zinc-300',
+    }
+  }
+
+  const latest = candidates.reduce((prev, current) => (current.minutes > prev.minutes ? current : prev))
+  if (latest.slot === 'snack' && latest.minutes >= 21 * 60) {
+    return {
+      badge: '⚠️ 소화 주의 (야식 감지)',
+      detail: `최종 섭취 ${latest.time} · 취침 3시간 전 이내 섭취 가능성이 있습니다.`,
+      tone: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+    }
+  }
+  if (latest.minutes <= 20 * 60) {
+    return {
+      badge: '🟢 소화 안전 & 지방 연소 모드',
+      detail: `최종 섭취 ${latest.time} · 저녁 8시 이전 마감`,
+      tone: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+    }
+  }
+  return {
+    badge: '🟡 소화 체크',
+    detail: `최종 섭취 ${latest.time} · 취침 전 간격을 확인하세요.`,
+    tone: 'border-yellow-500/30 bg-yellow-500/10 text-yellow-300',
+  }
+}
+
 export default function DietNutrition({
   selectedDate,
   onDateChange,
@@ -31,144 +104,240 @@ export default function DietNutrition({
   aiSettings,
   onUpdateDietLogs,
 }) {
-  const [mealInput, setMealInput] = useState('')
-  const [status, setStatus] = useState('')
-  const [error, setError] = useState('')
-  const [parsing, setParsing] = useState(false)
+  const [drafts, setDrafts] = useState(() => initialDraftsFromSlots(createEmptyDietSlots()))
+  const [slotLoading, setSlotLoading] = useState(null)
+  const [slotHints, setSlotHints] = useState({})
 
   const dateKey = formatDateKey(selectedDate)
-  const meals = useMemo(() => {
-    const items = dietLogs?.[dateKey]?.meals ?? []
-    return [...items].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-  }, [dietLogs, dateKey])
-  const totals = useMemo(() => sumDayTotals(meals), [meals])
+  const normalizedLogs = useMemo(() => ensureDietLog(dietLogs ?? {}, dateKey), [dietLogs, dateKey])
+  const currentSlots = normalizedLogs[dateKey]?.slots ?? createEmptyDietSlots()
 
-  const appendMeal = (parsed, rawText) => {
-    const meal = {
-      id: createMeasurementId('meal'),
-      text: rawText.trim(),
-      source: parsed.source,
-      provider: parsed.provider,
-      model: parsed.model,
-      confidence: parsed.confidence,
-      items: parsed.items,
-      totals: parsed.totals,
-      createdAt: new Date().toISOString(),
-    }
+  useEffect(() => {
+    setDrafts(initialDraftsFromSlots(currentSlots))
+    setSlotHints({})
+    setSlotLoading(null)
+  }, [dateKey, currentSlots.morning?.id, currentSlots.lunch?.id, currentSlots.dinner?.id, currentSlots.snack?.id])
 
+  const dailyMeals = useMemo(
+    () => SLOT_META.map((slot) => currentSlots[slot.key]).filter(Boolean),
+    [currentSlots],
+  )
+  const totals = useMemo(() => sumDayTotals(dailyMeals), [dailyMeals])
+
+  const macroCalories = useMemo(
+    () => ({
+      carbs: totals.carbs * 4,
+      protein: totals.protein * 4,
+      fat: totals.fat * 9,
+    }),
+    [totals],
+  )
+  const macroTotalCalories = macroCalories.carbs + macroCalories.protein + macroCalories.fat
+  const macroActualRatio = {
+    carbs: macroTotalCalories ? (macroCalories.carbs / macroTotalCalories) * 100 : 0,
+    protein: macroTotalCalories ? (macroCalories.protein / macroTotalCalories) * 100 : 0,
+    fat: macroTotalCalories ? (macroCalories.fat / macroTotalCalories) * 100 : 0,
+  }
+
+  const donutData = {
+    labels: ['탄수화물', '단백질', '지방'],
+    datasets: [
+      {
+        label: '실제 비율',
+        data: [macroActualRatio.carbs, macroActualRatio.protein, macroActualRatio.fat],
+        backgroundColor: ['rgba(52, 211, 153, 0.85)', 'rgba(34, 211, 238, 0.85)', 'rgba(217, 70, 239, 0.85)'],
+        borderColor: ['rgba(16, 185, 129, 1)', 'rgba(6, 182, 212, 1)', 'rgba(192, 38, 211, 1)'],
+        borderWidth: 1.2,
+      },
+      {
+        label: '목표 비율',
+        data: [TARGET_MACRO_RATIO.carbs, TARGET_MACRO_RATIO.protein, TARGET_MACRO_RATIO.fat],
+        backgroundColor: ['rgba(52, 211, 153, 0.2)', 'rgba(34, 211, 238, 0.2)', 'rgba(217, 70, 239, 0.2)'],
+        borderWidth: 0,
+      },
+    ],
+  }
+
+  const donutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '56%',
+    plugins: {
+      legend: {
+        labels: { color: '#a1a1aa', font: { size: 11 } },
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => `${ctx.dataset.label}: ${Number(ctx.parsed).toFixed(1)}%`,
+        },
+      },
+    },
+  }
+
+  const indicator = useMemo(() => findLastMealIndicator(currentSlots), [currentSlots])
+  const calorieProgress = Math.min(100, (totals.calories / CALORIE_GOAL) * 100)
+
+  const updateDraft = (slotKey, field, value) => {
+    setDrafts((prev) => ({
+      ...prev,
+      [slotKey]: { ...prev[slotKey], [field]: value },
+    }))
+  }
+
+  const saveSlot = (slotKey, mealData) => {
     onUpdateDietLogs((logs) => {
-      const next = ensureDietLog(logs, dateKey)
+      const ensured = ensureDietLog(logs, dateKey)
       return {
-        ...next,
+        ...ensured,
         [dateKey]: {
-          meals: [meal, ...(next[dateKey]?.meals ?? [])],
+          ...ensured[dateKey],
+          slots: {
+            ...ensured[dateKey].slots,
+            [slotKey]: mealData,
+          },
         },
       }
     })
   }
 
-  const handleParseAndSave = async () => {
-    const text = mealInput.trim()
-    if (!text) {
-      setError('식사 내용을 입력해주세요.')
-      setStatus('')
+  const handleAnalyzeSlot = async (slotKey) => {
+    const draft = drafts[slotKey]
+    if (!draft?.text?.trim()) {
+      setSlotHints((prev) => ({ ...prev, [slotKey]: '입력값이 비어 있어 저장하지 않았습니다.' }))
       return
     }
 
-    setParsing(true)
-    setError('')
-    setStatus('AI 파싱 중...')
+    setSlotLoading(slotKey)
+    setSlotHints((prev) => ({ ...prev, [slotKey]: '' }))
     try {
-      const parsed = await parseNutritionText(text, aiSettings)
-      appendMeal(parsed, text)
-      setMealInput('')
-      if (parsed.source === 'heuristic') {
-        setStatus(`AI 호출 실패로 휴리스틱 추정 저장: ${parsed.notes}`)
-      } else {
-        setStatus(`저장 완료 · ${parsed.provider} (${parsed.model})`)
-      }
-    } catch (err) {
-      setError(err.message || '파싱에 실패했습니다.')
-      setStatus('')
+      const parsed = await parseNutritionText(draft.text, aiSettings)
+      saveSlot(slotKey, {
+        id: currentSlots?.[slotKey]?.id ?? createMeasurementId(`meal-${slotKey}`),
+        slot: slotKey,
+        time: draft.time || '',
+        text: draft.text.trim(),
+        source: parsed.source,
+        provider: parsed.provider,
+        model: parsed.model,
+        confidence: parsed.confidence,
+        items: parsed.items,
+        totals: parsed.totals,
+        createdAt: currentSlots?.[slotKey]?.createdAt ?? new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+
+      setSlotHints((prev) => ({
+        ...prev,
+        [slotKey]: parsed.source === 'heuristic' ? '로컬 파서로 분석해 저장했습니다.' : 'AI 분석 완료',
+      }))
+    } catch {
+      setSlotHints((prev) => ({ ...prev, [slotKey]: '분석 실패: 입력 형식을 확인해주세요.' }))
     } finally {
-      setParsing(false)
+      setSlotLoading(null)
     }
   }
 
-  const handleDeleteMeal = (mealId) => {
-    onUpdateDietLogs((logs) => {
-      const next = ensureDietLog(logs, dateKey)
-      return {
-        ...next,
-        [dateKey]: {
-          meals: (next[dateKey]?.meals ?? []).filter((meal) => meal.id !== mealId),
-        },
-      }
-    })
+  const handleClearSlot = (slotKey) => {
+    saveSlot(slotKey, null)
+    const slotMeta = SLOT_META.find((slot) => slot.key === slotKey)
+    setDrafts((prev) => ({
+      ...prev,
+      [slotKey]: { text: '', time: slotMeta?.defaultTime ?? '12:00' },
+    }))
+    setSlotHints((prev) => ({ ...prev, [slotKey]: '' }))
+  }
+
+  const handleRestoreSlot = (slotKey) => {
+    const saved = currentSlots?.[slotKey]
+    const slotMeta = SLOT_META.find((slot) => slot.key === slotKey)
+    setDrafts((prev) => ({
+      ...prev,
+      [slotKey]: {
+        text: saved?.text ?? '',
+        time: saved?.time ?? slotMeta?.defaultTime ?? '12:00',
+      },
+    }))
+    setSlotHints((prev) => ({ ...prev, [slotKey]: saved ? '저장된 값으로 복원했습니다.' : '' }))
   }
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-5">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
-          Diet & Nutrition
-        </h2>
-        <span className="text-xs text-zinc-500">
-          파서: {aiSettings?.provider ?? 'gemini'}
-        </span>
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Diet & Nutrition</h2>
+        <span className="text-xs text-zinc-500">파서: {aiSettings?.provider ?? 'auto'} / 목표 {CALORIE_GOAL}kcal</span>
       </div>
 
       <DateNavigator selectedDate={selectedDate} onDateChange={onDateChange} />
 
-      <div className="card-glow rounded-xl border border-zinc-800/70 bg-zinc-900/60 p-4 space-y-3">
-        <p className="text-xs text-zinc-400">
-          예시: 닭가슴살 150g, 밥 1공기, 계란 2개
-        </p>
-        <textarea
-          rows={3}
-          value={mealInput}
-          onChange={(e) => setMealInput(e.target.value)}
-          placeholder="오늘 먹은 식사를 자유롭게 입력하세요."
-          className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 resize-y"
-        />
-        <button
-          type="button"
-          onClick={handleParseAndSave}
-          disabled={parsing}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-emerald-600 to-cyan-600 rounded-lg hover:from-emerald-500 hover:to-cyan-500 disabled:opacity-50"
-        >
-          {parsing ? <Sparkles size={14} className="animate-pulse" /> : <Plus size={14} />}
-          파싱 후 저장
-        </button>
-        {status && <p className="text-xs text-emerald-400">{status}</p>}
-        {error && <p className="text-xs text-red-400">{error}</p>}
-      </div>
-
-      <div className="card-glow rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4">
-        <p className="text-xs text-zinc-400 mb-2">{dateKey} 총합</p>
-        <div className="flex flex-wrap gap-3 text-sm">
-          <span className="text-amber-300">칼로리 {fmt(totals.calories, 'kcal')}</span>
-          <span className="text-cyan-300">단백질 {fmt(totals.protein)}</span>
-          <span className="text-emerald-300">탄수화물 {fmt(totals.carbs)}</span>
-          <span className="text-fuchsia-300">지방 {fmt(totals.fat)}</span>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {SLOT_META.map((slot) => (
+          <MealCard
+            key={slot.key}
+            slotKey={slot.key}
+            title={slot.label}
+            emoji={slot.emoji}
+            meal={currentSlots[slot.key]}
+            timeValue={drafts[slot.key]?.time ?? slot.defaultTime}
+            textValue={drafts[slot.key]?.text ?? ''}
+            loading={slotLoading === slot.key}
+            hint={slotHints[slot.key]}
+            onTimeChange={(value) => updateDraft(slot.key, 'time', value)}
+            onTextChange={(value) => updateDraft(slot.key, 'text', value)}
+            onAnalyze={() => handleAnalyzeSlot(slot.key)}
+            onClear={() => handleClearSlot(slot.key)}
+            onRestore={() => handleRestoreSlot(slot.key)}
+          />
+        ))}
       </div>
 
       <div className="space-y-3">
-        {meals.length === 0 && (
-          <p className="text-sm text-zinc-500 text-center py-6 border border-dashed border-zinc-700 rounded-xl">
-            아직 저장된 식사 기록이 없습니다.
-          </p>
-        )}
+        <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">식습관 트래킹 인사이트</h3>
 
-        {meals.map((meal) => (
-          <MealCard
-            key={meal.id}
-            meal={meal}
-            onDelete={handleDeleteMeal}
-            onReuseInput={setMealInput}
-          />
-        ))}
+        <div className="card-glow rounded-2xl border border-zinc-800/70 bg-zinc-900/60 p-4 space-y-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-zinc-300">일일 칼로리 진행도</span>
+            <span className="text-amber-300 font-medium">{fmt(totals.calories, 'kcal')} / {CALORIE_GOAL}kcal</span>
+          </div>
+          <div className="h-2.5 rounded-full bg-zinc-800 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 transition-all duration-300"
+              style={{ width: `${calorieProgress}%` }}
+            />
+          </div>
+          <p className="text-xs text-zinc-500">총합: 탄 {fmt(totals.carbs)} · 단 {fmt(totals.protein)} · 지 {fmt(totals.fat)}</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-3">
+          <div className="card-glow rounded-2xl border border-zinc-800/70 bg-zinc-900/60 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-zinc-300">라스트 밀 & 소화 세이프티</p>
+              <span className={`text-xs px-2 py-1 rounded-full border ${indicator.tone}`}>{indicator.badge}</span>
+            </div>
+            <p className="text-xs text-zinc-500 mb-3">{indicator.detail}</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {SLOT_META.map((slot) => {
+                const meal = currentSlots?.[slot.key]
+                return (
+                  <div key={slot.key} className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2">
+                    <p className="text-[11px] text-zinc-500">{slot.emoji} {slot.label}</p>
+                    <p className="text-sm text-zinc-200">{meal?.time || '--:--'}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="card-glow rounded-2xl border border-zinc-800/70 bg-zinc-900/60 p-4">
+            <p className="text-sm text-zinc-300 mb-2">탄·단·지 도넛 차트</p>
+            <div className="chart-canvas-wrap h-56">
+              <Doughnut data={donutData} options={donutOptions} />
+            </div>
+            <div className="mt-3 text-xs text-zinc-500 space-y-1">
+              <p>목표 비율: 탄 {TARGET_MACRO_RATIO.carbs}% · 단 {TARGET_MACRO_RATIO.protein}% · 지 {TARGET_MACRO_RATIO.fat}%</p>
+              <p>실제 비율: 탄 {macroActualRatio.carbs.toFixed(1)}% · 단 {macroActualRatio.protein.toFixed(1)}% · 지 {macroActualRatio.fat.toFixed(1)}%</p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   )

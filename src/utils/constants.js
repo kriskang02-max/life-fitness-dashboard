@@ -39,6 +39,8 @@ export const DEFAULT_MOTIVATION_VIDEOS = {
 
 export const DAILY_CHECK_KEYS = ['workout', 'diet', 'dopamine', 'read']
 
+export const MEAL_SLOT_KEYS = ['morning', 'lunch', 'dinner', 'snack']
+
 export const DAILY_CHECK_LABELS = {
   workout: '관절 보호 운동',
   diet: '클린 디너 & 야식 차단',
