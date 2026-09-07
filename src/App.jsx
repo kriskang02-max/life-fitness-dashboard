@@ -194,6 +194,8 @@ export default function App() {
       <div className="max-w-7xl mx-auto w-full max-w-full px-4 py-6 md:py-8 space-y-6 md:space-y-8 overflow-x-hidden">
         <Header
           dailyLogs={data.daily_logs}
+          dietLogs={data.diet_logs}
+          nutritionTargets={data.nutrition_targets}
           syncStatus={syncStatus}
           onOpenRoutine={() => setRoutineOpen(true)}
           onOpenBackup={() => setBackupOpen(true)}

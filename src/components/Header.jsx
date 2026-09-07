@@ -1,25 +1,69 @@
 import { Settings, Database, Cloud } from 'lucide-react'
-import { formatDisplayDate, formatDateKey } from '../utils/dates'
-import { ensureTodayLog, getDayCompletionCount } from '../utils/storage'
+import { addDays, formatDisplayDate, formatDateKey } from '../utils/dates'
+
+const DEFAULT_CALORIE_GOAL = 1800
+const CLEAN_DINNER_CUTOFF = 20 * 60 + 30
+
+function parseTimeToMinutes(timeText) {
+  if (!timeText || !/^\d{2}:\d{2}$/.test(timeText)) return null
+  const [hh, mm] = timeText.split(':').map(Number)
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null
+  return hh * 60 + mm
+}
+
+function sumDayCalories(entry) {
+  const slots = entry?.slots && typeof entry.slots === 'object' ? Object.values(entry.slots) : []
+  const meals = slots.filter(Boolean)
+  return meals.reduce((sum, meal) => sum + (Number(meal?.totals?.calories) || 0), 0)
+}
+
+function isCleanDietDay(entry, calorieGoal) {
+  if (!entry?.slots) return false
+  const calories = sumDayCalories(entry)
+  const dinnerMinutes = parseTimeToMinutes(entry.slots?.dinner?.time)
+  return calories > 0 && calories <= calorieGoal && dinnerMinutes != null && dinnerMinutes <= CLEAN_DINNER_CUTOFF
+}
+
+function countWorkoutStreak(dailyLogs, today) {
+  let streak = 0
+  for (let i = 0; i < 3650; i++) {
+    const key = formatDateKey(addDays(today, -i))
+    if (dailyLogs?.[key]?.workout) {
+      streak += 1
+      continue
+    }
+    break
+  }
+  return streak
+}
+
+function countCleanDietStreak(dietLogs, today, calorieGoal) {
+  let streak = 0
+  for (let i = 0; i < 3650; i++) {
+    const key = formatDateKey(addDays(today, -i))
+    if (isCleanDietDay(dietLogs?.[key], calorieGoal)) {
+      streak += 1
+      continue
+    }
+    break
+  }
+  return streak
+}
 
 export default function Header({
   onOpenRoutine,
   onOpenBackup,
   onOpenSync,
   dailyLogs,
+  dietLogs,
+  nutritionTargets,
   syncStatus,
 }) {
   const today = new Date()
-  const logs = ensureTodayLog(dailyLogs)
-  const todayKey = formatDateKey(today)
-  const todayCount = getDayCompletionCount(logs[todayKey])
-
-  const statusBadge =
-    todayCount === 4
-      ? { text: '🔥 All Clear', className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' }
-      : todayCount >= 2
-        ? { text: '⚡ In Progress', className: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' }
-        : { text: '🌱 Start Today', className: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' }
+  today.setHours(0, 0, 0, 0)
+  const calorieGoal = Math.max(100, Number(nutritionTargets?.calorieGoal) || DEFAULT_CALORIE_GOAL)
+  const workoutStreak = countWorkoutStreak(dailyLogs, today)
+  const cleanDietStreak = countCleanDietStreak(dietLogs, today, calorieGoal)
 
   const syncDot =
     syncStatus === 'ok'
@@ -39,9 +83,14 @@ export default function Header({
         </div>
 
         <div className="flex items-center justify-between gap-2 min-w-0">
-          <span className={`inline-flex items-center px-2.5 sm:px-3 py-1 text-xs font-medium rounded-full border shrink-0 ${statusBadge.className}`}>
-            {statusBadge.text} · {todayCount}/4
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+            <span className="inline-flex items-center px-2.5 sm:px-3 py-1 text-xs font-medium rounded-full border shrink-0 border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
+              🏋️ {workoutStreak}일 연속 운동
+            </span>
+            <span className="inline-flex items-center px-2.5 sm:px-3 py-1 text-xs font-medium rounded-full border shrink-0 border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
+              🥗 {cleanDietStreak}일 연속 클린 식단
+            </span>
+          </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
