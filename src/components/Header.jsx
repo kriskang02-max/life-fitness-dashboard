@@ -11,16 +11,24 @@ function parseTimeToMinutes(timeText) {
   return hh * 60 + mm
 }
 
+function getMealsFromEntry(entry) {
+  if (!entry) return []
+  if (entry.slots && typeof entry.slots === 'object') return Object.values(entry.slots).filter(Boolean)
+  if (Array.isArray(entry.meals)) return entry.meals.filter(Boolean)
+  return []
+}
+
 function sumDayCalories(entry) {
-  const slots = entry?.slots && typeof entry.slots === 'object' ? Object.values(entry.slots) : []
-  const meals = slots.filter(Boolean)
+  const meals = getMealsFromEntry(entry)
   return meals.reduce((sum, meal) => sum + (Number(meal?.totals?.calories) || 0), 0)
 }
 
 function isCleanDietDay(entry, calorieGoal) {
-  if (!entry?.slots) return false
+  const meals = getMealsFromEntry(entry)
+  if (!meals.length) return false
   const calories = sumDayCalories(entry)
-  const dinnerMinutes = parseTimeToMinutes(entry.slots?.dinner?.time)
+  const dinner = entry?.slots?.dinner ?? meals.find((meal) => meal?.slot === 'dinner')
+  const dinnerMinutes = parseTimeToMinutes(dinner?.time)
   return calories > 0 && calories <= calorieGoal && dinnerMinutes != null && dinnerMinutes <= CLEAN_DINNER_CUTOFF
 }
 
@@ -39,9 +47,18 @@ function countWorkoutStreak(dailyLogs, today) {
 
 function countCleanDietStreak(dietLogs, today, calorieGoal) {
   let streak = 0
+  let foundTrackedDay = false
   for (let i = 0; i < 3650; i++) {
     const key = formatDateKey(addDays(today, -i))
-    if (isCleanDietDay(dietLogs?.[key], calorieGoal)) {
+    const entry = dietLogs?.[key]
+    const hasData = getMealsFromEntry(entry).length > 0
+
+    if (!foundTrackedDay) {
+      if (!hasData) continue
+      foundTrackedDay = true
+    }
+
+    if (isCleanDietDay(entry, calorieGoal)) {
       streak += 1
       continue
     }

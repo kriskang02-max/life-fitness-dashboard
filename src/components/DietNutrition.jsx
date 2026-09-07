@@ -120,6 +120,32 @@ function buildDaySummary(dateKey, entry, calorieGoal) {
   }
 }
 
+function countCleanStreakFromDate(logs, startDate, calorieGoal) {
+  const base = new Date(startDate)
+  base.setHours(0, 0, 0, 0)
+
+  let streak = 0
+  let foundTrackedDay = false
+
+  for (let i = 0; i < 3650; i++) {
+    const key = formatDateKey(addDays(base, -i))
+    const summary = buildDaySummary(key, logs?.[key], calorieGoal)
+
+    if (!foundTrackedDay) {
+      if (!summary.hasData) continue
+      foundTrackedDay = true
+    }
+
+    if (summary.cleanDay) {
+      streak += 1
+      continue
+    }
+    break
+  }
+
+  return streak
+}
+
 function buildTrendChartData(summaries, calorieGoal) {
   const labels = summaries.map((item) => {
     const date = parseDateKey(item.dateKey)
@@ -379,21 +405,10 @@ export default function DietNutrition({
   const weeklyCleanTotal = trackedSummaries.length
   const weeklyCleanPercent = weeklyCleanTotal ? Math.round((weeklyCleanSuccess / weeklyCleanTotal) * 100) : 0
 
-  const cleanStreak = useMemo(() => {
-    let count = 0
-    const base = new Date(selectedDate)
-    base.setHours(0, 0, 0, 0)
-    for (let i = 0; i < 120; i++) {
-      const key = formatDateKey(addDays(base, -i))
-      const summary = buildDaySummary(key, normalizedLogs[key], calorieGoal)
-      if (summary.cleanDay) {
-        count += 1
-      } else {
-        break
-      }
-    }
-    return count
-  }, [selectedDate, normalizedLogs, calorieGoal])
+  const cleanStreak = useMemo(
+    () => countCleanStreakFromDate(normalizedLogs, selectedDate, calorieGoal),
+    [selectedDate, normalizedLogs, calorieGoal],
+  )
 
   const avgFastingHours = useMemo(() => {
     const base = new Date(selectedDate)
