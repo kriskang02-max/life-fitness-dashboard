@@ -46,11 +46,24 @@ function initialDraftsFromSlots(slots) {
   const draft = {}
   for (const slot of SLOT_META) {
     draft[slot.key] = {
-      time: slots?.[slot.key]?.time || slot.defaultTime,
+      time: normalizeToHalfHour(slots?.[slot.key]?.time || slot.defaultTime),
       text: slots?.[slot.key]?.text || '',
     }
   }
   return draft
+}
+
+function normalizeToHalfHour(timeText) {
+  if (!timeText || !/^\d{2}:\d{2}$/.test(timeText)) return ''
+  const [hh, mm] = timeText.split(':').map(Number)
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return ''
+  const total = hh * 60 + mm
+  let rounded = Math.round(total / 30) * 30
+  if (rounded >= 24 * 60) rounded = 23 * 60 + 30
+  if (rounded < 0) rounded = 0
+  const outH = String(Math.floor(rounded / 60)).padStart(2, '0')
+  const outM = String(rounded % 60).padStart(2, '0')
+  return `${outH}:${outM}`
 }
 
 function parseTimeToMinutes(timeText) {
@@ -189,7 +202,10 @@ export default function DietNutrition({
   const updateDraft = (slotKey, field, value) => {
     setDrafts((prev) => ({
       ...prev,
-      [slotKey]: { ...prev[slotKey], [field]: value },
+      [slotKey]: {
+        ...prev[slotKey],
+        [field]: field === 'time' ? normalizeToHalfHour(value) : value,
+      },
     }))
   }
 
@@ -228,7 +244,7 @@ export default function DietNutrition({
       saveSlot(slotKey, {
         id: currentSlots?.[slotKey]?.id ?? createMeasurementId(`meal-${slotKey}`),
         slot: slotKey,
-        time: draft.time || '',
+        time: normalizeToHalfHour(draft.time || ''),
         text: draft.text.trim(),
         provider: parsed.provider,
         model: parsed.model,
