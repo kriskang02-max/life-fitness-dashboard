@@ -5,7 +5,7 @@ import DateNavigator from './DateNavigator'
 import MealCard from './MealCard'
 import { formatDateKey } from '../utils/dates'
 import { createMeasurementId, createEmptyDietSlots, ensureDietLog } from '../utils/storage'
-import { parseNutritionText } from '../utils/nutritionParser'
+import { GEMINI_KEY_REQUIRED_MESSAGE, parseNutritionText } from '../utils/nutritionParser'
 
 const SLOT_META = [
   { key: 'morning', label: '아침', emoji: '🌅', defaultTime: '07:30' },
@@ -206,6 +206,11 @@ export default function DietNutrition({
       setSlotHints((prev) => ({ ...prev, [slotKey]: '입력값이 비어 있어 저장하지 않았습니다.' }))
       return
     }
+    if (!aiSettings?.geminiApiKey?.trim()) {
+      setSlotHints((prev) => ({ ...prev, [slotKey]: GEMINI_KEY_REQUIRED_MESSAGE }))
+      if (typeof window !== 'undefined') window.alert(GEMINI_KEY_REQUIRED_MESSAGE)
+      return
+    }
 
     setSlotLoading(slotKey)
     setSlotHints((prev) => ({ ...prev, [slotKey]: '' }))
@@ -216,22 +221,24 @@ export default function DietNutrition({
         slot: slotKey,
         time: draft.time || '',
         text: draft.text.trim(),
-        source: parsed.source,
         provider: parsed.provider,
         model: parsed.model,
-        confidence: parsed.confidence,
         items: parsed.items,
         totals: parsed.totals,
+        summary: parsed.summary,
         createdAt: currentSlots?.[slotKey]?.createdAt ?? new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })
 
       setSlotHints((prev) => ({
         ...prev,
-        [slotKey]: parsed.source === 'heuristic' ? '로컬 파서로 분석해 저장했습니다.' : 'AI 분석 완료',
+        [slotKey]: 'Gemini 분석 완료',
       }))
-    } catch {
-      setSlotHints((prev) => ({ ...prev, [slotKey]: '분석 실패: 입력 형식을 확인해주세요.' }))
+    } catch (error) {
+      setSlotHints((prev) => ({
+        ...prev,
+        [slotKey]: error?.message || 'API 호출에 실패했습니다. 키를 확인해주세요.',
+      }))
     } finally {
       setSlotLoading(null)
     }
@@ -264,7 +271,7 @@ export default function DietNutrition({
     <section className="space-y-5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Diet & Nutrition</h2>
-        <span className="text-xs text-zinc-500">파서: {aiSettings?.provider ?? 'auto'} / 목표 {CALORIE_GOAL}kcal</span>
+        <span className="text-xs text-zinc-500">파서: Gemini 2.5 Flash / 목표 {CALORIE_GOAL}kcal</span>
       </div>
 
       <DateNavigator selectedDate={selectedDate} onDateChange={onDateChange} />

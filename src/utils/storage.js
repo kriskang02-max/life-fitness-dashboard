@@ -244,9 +244,9 @@ function normalizeMealLog(entry) {
     slot: entry?.slot ? String(entry.slot) : null,
     time: String(entry?.time ?? ''),
     text: String(entry?.text ?? '').trim(),
-    source: String(entry?.source ?? 'manual'),
-    provider: entry?.provider ? String(entry.provider) : null,
-    model: entry?.model ? String(entry.model) : null,
+    summary: String(entry?.summary ?? entry?.text ?? '').trim(),
+    provider: 'gemini',
+    model: DEFAULT_AI_SETTINGS.geminiModel,
     confidence: Number(entry?.confidence) || 0,
     createdAt: String(entry?.createdAt ?? new Date().toISOString()),
     items,
@@ -289,12 +289,8 @@ export function normalizeDietLogs(raw) {
 export function normalizeAiSettings(raw) {
   const merged = { ...DEFAULT_AI_SETTINGS, ...(raw ?? {}) }
   return {
-    ...merged,
-    provider: ['gemini', 'openai', 'auto'].includes(merged.provider) ? merged.provider : 'gemini',
     geminiApiKey: String(merged.geminiApiKey ?? ''),
-    geminiModel: String(merged.geminiModel ?? DEFAULT_AI_SETTINGS.geminiModel),
-    openaiApiKey: String(merged.openaiApiKey ?? ''),
-    openaiModel: String(merged.openaiModel ?? DEFAULT_AI_SETTINGS.openaiModel),
+    geminiModel: DEFAULT_AI_SETTINGS.geminiModel,
   }
 }
 

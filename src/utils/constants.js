@@ -113,11 +113,8 @@ export const DEFAULT_SYNC_SETTINGS = {
 }
 
 export const DEFAULT_AI_SETTINGS = {
-  provider: 'gemini',
   geminiApiKey: '',
-  geminiModel: 'gemini-1.5-flash',
-  openaiApiKey: '',
-  openaiModel: 'gpt-4o-mini',
+  geminiModel: 'gemini-2.5-flash',
 }
 
 /** @deprecated use daily_items_config */

@@ -64,6 +64,12 @@ export default function MealCard({
           type="text"
           value={textValue}
           onChange={(e) => onTextChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              onAnalyze()
+            }
+          }}
           placeholder="예: 장어 1.5마리, 밥 0.3공기, 밑반찬, 제로콜라 1캔"
           className="px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
           aria-label={`${title} 식사 입력`}
@@ -75,8 +81,9 @@ export default function MealCard({
           type="button"
           onClick={onAnalyze}
           disabled={loading}
-          className="px-3 py-2 text-xs font-medium text-white bg-gradient-to-r from-emerald-600 to-cyan-600 rounded-lg hover:from-emerald-500 hover:to-cyan-500 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-gradient-to-r from-emerald-600 to-cyan-600 rounded-lg hover:from-emerald-500 hover:to-cyan-500 disabled:opacity-50"
         >
+          {loading && <span className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />}
           {loading ? '분석 중...' : '기록/분석'}
         </button>
 
@@ -100,12 +107,6 @@ export default function MealCard({
         </div>
       </div>
 
-      {hasMeal && (
-        <p className="text-xs text-zinc-500 truncate">
-          {meal.source === 'heuristic' ? 'Local heuristic' : `${meal.provider} ${meal.model ?? ''}`}
-          {meal.time ? ` · ${meal.time}` : ''} · {meal.text}
-        </p>
-      )}
       {hint && <p className="text-xs text-zinc-400">{hint}</p>}
     </article>
   )

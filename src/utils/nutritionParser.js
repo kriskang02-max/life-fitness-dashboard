@@ -1,4 +1,11 @@
-import { heuristicParseNutrition, sumNutrition } from './nutritionHeuristic'
+const GEMINI_MODEL = 'gemini-2.5-flash'
+export const GEMINI_KEY_REQUIRED_MESSAGE = '⚙️ [루틴 설정]에서 Gemini API Key를 먼저 등록해주세요.'
+const GEMINI_CALL_FAILED_MESSAGE = 'API 호출에 실패했습니다. 키를 확인해주세요.'
+
+function toNumber(value) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
 
 function extractFirstJsonBlock(rawText) {
   const text = String(rawText ?? '').trim()
@@ -11,170 +18,62 @@ function extractFirstJsonBlock(rawText) {
 
   const first = withoutFence.indexOf('{')
   const last = withoutFence.lastIndexOf('}')
-  if (first === -1 || last === -1 || last <= first) throw new Error('AI 응답에서 JSON을 찾지 못했습니다.')
+  if (first === -1 || last === -1 || last <= first) {
+    throw new Error('AI 응답에서 JSON을 찾지 못했습니다.')
+  }
 
   return withoutFence.slice(first, last + 1)
 }
 
-function toNumber(value) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : 0
-}
+function buildPrompt(text) {
+  return `다음 식사 기록을 분석해 JSON object 하나만 반환하세요.
 
-function normalizeItems(items) {
-  if (!Array.isArray(items)) return []
-
-  return items
-    .map((item) => ({
-      name: String(item?.name ?? '').trim(),
-      amount: String(item?.amount ?? '').trim(),
-      calories: toNumber(item?.calories),
-      protein: toNumber(item?.protein),
-      carbs: toNumber(item?.carbs),
-      fat: toNumber(item?.fat),
-    }))
-    .filter((item) => item.name)
-}
-
-function createPrompt(text) {
-  return `다음 식사 기록을 영양 정보 JSON으로 파싱하세요.
-
-요구사항:
-1) 추정이 필요한 경우 현실적인 범위에서 추정합니다.
-2) 출력은 JSON object만 반환합니다.
-3) 필수 스키마:
+응답 스키마:
 {
-  "items": [
-    {
-      "name": "음식명",
-      "amount": "섭취량",
-      "calories": 0,
-      "protein": 0,
-      "carbs": 0,
-      "fat": 0
-    }
-  ],
-  "confidence": 0.0,
-  "notes": "간단한 추정 근거"
+  "kcal": 850,
+  "carbs": 70,
+  "protein": 55,
+  "fat": 38,
+  "summary": "장어구이 1.5마리와 쌀밥 1공기"
 }
-4) calories/protein/carbs/fat은 숫자여야 합니다.
+
+규칙:
+1) 숫자 필드는 반드시 number 타입으로 반환
+2) summary는 1문장 한국어 요약
+3) 코드블록 없이 JSON object만 반환
+4) 정보가 불완전하면 현실적인 추정치로 계산
 
 식사 기록:
 ${text}`
 }
 
-async function parseWithGemini(text, settings) {
-  const apiKey = settings?.geminiApiKey?.trim()
-  if (!apiKey) throw new Error('Gemini API key가 설정되지 않았습니다.')
+function normalizeGeminiResult(rawResult, originalText) {
+  const kcal = toNumber(rawResult?.kcal ?? rawResult?.calories)
+  const carbs = toNumber(rawResult?.carbs)
+  const protein = toNumber(rawResult?.protein)
+  const fat = toNumber(rawResult?.fat)
+  const summary = String(rawResult?.summary ?? originalText).trim() || originalText
 
-  const model = (settings?.geminiModel || 'gemini-1.5-flash').trim()
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: createPrompt(text) }] }],
-      generationConfig: {
-        temperature: 0.1,
-        responseMimeType: 'application/json',
+  return {
+    items: [
+      {
+        name: summary,
+        amount: '1회',
+        calories: kcal,
+        carbs,
+        protein,
+        fat,
       },
-    }),
-  })
-
-  if (!response.ok) {
-    const body = await response.text()
-    throw new Error(`Gemini 요청 실패 (${response.status}): ${body.slice(0, 180)}`)
-  }
-
-  const data = await response.json()
-  const raw = data?.candidates?.[0]?.content?.parts?.map((part) => part.text).join('\n') ?? ''
-  const jsonText = extractFirstJsonBlock(raw)
-  const parsed = JSON.parse(jsonText)
-
-  return {
-    provider: 'gemini',
-    model,
-    items: normalizeItems(parsed.items),
-    confidence: toNumber(parsed.confidence),
-    notes: String(parsed.notes ?? ''),
-  }
-}
-
-async function parseWithOpenAI(text, settings) {
-  const apiKey = settings?.openaiApiKey?.trim()
-  if (!apiKey) throw new Error('OpenAI API key가 설정되지 않았습니다.')
-
-  const model = (settings?.openaiModel || 'gpt-4o-mini').trim()
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
+    ],
+    totals: {
+      calories: kcal,
+      carbs,
+      protein,
+      fat,
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.1,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: 'You parse meal text into nutrition JSON. Return JSON object only.' },
-        { role: 'user', content: createPrompt(text) },
-      ],
-    }),
-  })
-
-  if (!response.ok) {
-    const body = await response.text()
-    throw new Error(`OpenAI 요청 실패 (${response.status}): ${body.slice(0, 180)}`)
-  }
-
-  const data = await response.json()
-  const raw = data?.choices?.[0]?.message?.content ?? ''
-  const jsonText = extractFirstJsonBlock(raw)
-  const parsed = JSON.parse(jsonText)
-
-  return {
-    provider: 'openai',
-    model,
-    items: normalizeItems(parsed.items),
-    confidence: toNumber(parsed.confidence),
-    notes: String(parsed.notes ?? ''),
-  }
-}
-
-function resolveProviderOrder(settings) {
-  const selected = settings?.provider ?? 'gemini'
-  const hasGemini = Boolean(settings?.geminiApiKey?.trim())
-  const hasOpenAI = Boolean(settings?.openaiApiKey?.trim())
-
-  if (selected === 'auto') {
-    const order = []
-    if (hasGemini) order.push('gemini')
-    if (hasOpenAI) order.push('openai')
-    return order
-  }
-  if (selected === 'gemini') {
-    return hasGemini ? ['gemini'] : []
-  }
-  if (selected === 'openai') {
-    return hasOpenAI ? ['openai'] : []
-  }
-  return [selected]
-}
-
-function wrapResult(result) {
-  const items = normalizeItems(result.items)
-  if (items.length === 0) {
-    throw new Error('AI 응답에서 유효한 음식 항목을 찾지 못했습니다.')
-  }
-  return {
-    items,
-    totals: sumNutrition(items),
-    confidence: toNumber(result.confidence),
-    notes: result.notes || '',
-    source: result.provider,
-    provider: result.provider,
-    model: result.model,
+    summary,
+    provider: 'gemini',
+    model: GEMINI_MODEL,
   }
 }
 
@@ -182,39 +81,39 @@ export async function parseNutritionText(text, settings) {
   const trimmed = String(text ?? '').trim()
   if (!trimmed) throw new Error('식사 내용을 입력해주세요.')
 
-  const order = resolveProviderOrder(settings)
-  const errors = []
-
-  if (order.length === 0) {
-    const fallback = heuristicParseNutrition(trimmed)
-    return {
-      ...fallback,
-      source: 'heuristic',
-      provider: 'heuristic',
-      model: 'local-heuristic',
-      notes: fallback.notes,
-    }
+  const apiKey = settings?.geminiApiKey?.trim()
+  if (!apiKey) {
+    throw new Error(GEMINI_KEY_REQUIRED_MESSAGE)
   }
 
-  for (const provider of order) {
-    try {
-      if (provider === 'gemini') {
-        return wrapResult(await parseWithGemini(trimmed, settings))
-      }
-      if (provider === 'openai') {
-        return wrapResult(await parseWithOpenAI(trimmed, settings))
-      }
-    } catch (error) {
-      errors.push(error.message || String(error))
-    }
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: buildPrompt(trimmed) }] }],
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: 'application/json',
+        },
+      }),
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(GEMINI_CALL_FAILED_MESSAGE)
   }
 
-  const fallback = heuristicParseNutrition(trimmed)
-  return {
-    ...fallback,
-    source: 'heuristic',
-    provider: 'heuristic',
-    model: 'local-heuristic',
-    notes: fallback.notes,
+  const body = await response.json()
+  const rawText =
+    body?.candidates?.[0]?.content?.parts?.map((part) => part.text).join('\n') ?? ''
+
+  try {
+    const jsonText = extractFirstJsonBlock(rawText)
+    const parsed = JSON.parse(jsonText)
+    return normalizeGeminiResult(parsed, trimmed)
+  } catch {
+    throw new Error(GEMINI_CALL_FAILED_MESSAGE)
   }
 }

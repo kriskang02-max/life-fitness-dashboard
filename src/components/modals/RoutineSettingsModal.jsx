@@ -138,24 +138,11 @@ export default function RoutineSettingsModal({
       {tab === 'ai' && (
         <div className="space-y-4">
           <p className="text-xs text-zinc-500">
-            Diet & Nutrition 페이지에서 식사 텍스트를 파싱할 때 사용할 모델을 설정합니다.
+            Diet & Nutrition은 Gemini API 전용으로 동작합니다. 키가 없으면 분석이 실행되지 않습니다.
           </p>
 
-          <label className="block">
-            <span className="text-xs text-zinc-400 mb-1 block">우선 파서</span>
-            <select
-              value={ai.provider ?? 'gemini'}
-              onChange={(e) => setAi((prev) => ({ ...prev, provider: e.target.value }))}
-              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
-            >
-              <option value="gemini">Gemini</option>
-              <option value="openai">OpenAI</option>
-              <option value="auto">Auto (키가 있는 순서대로)</option>
-            </select>
-          </label>
-
           <div className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 space-y-2">
-            <p className="text-xs text-emerald-400 font-medium">Gemini</p>
+            <p className="text-xs text-emerald-400 font-medium">Gemini 2.5 Flash</p>
             <input
               type="password"
               value={ai.geminiApiKey ?? ''}
@@ -165,28 +152,9 @@ export default function RoutineSettingsModal({
             />
             <input
               type="text"
-              value={ai.geminiModel ?? 'gemini-1.5-flash'}
-              onChange={(e) => setAi((prev) => ({ ...prev, geminiModel: e.target.value }))}
-              placeholder="gemini-1.5-flash"
-              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
-            />
-          </div>
-
-          <div className="p-3 rounded-lg border border-cyan-500/20 bg-cyan-500/5 space-y-2">
-            <p className="text-xs text-cyan-400 font-medium">OpenAI</p>
-            <input
-              type="password"
-              value={ai.openaiApiKey ?? ''}
-              onChange={(e) => setAi((prev) => ({ ...prev, openaiApiKey: e.target.value }))}
-              placeholder="OpenAI API Key"
-              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
-            />
-            <input
-              type="text"
-              value={ai.openaiModel ?? 'gpt-4o-mini'}
-              onChange={(e) => setAi((prev) => ({ ...prev, openaiModel: e.target.value }))}
-              placeholder="gpt-4o-mini"
-              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+              value={ai.geminiModel ?? 'gemini-2.5-flash'}
+              readOnly
+              className="w-full px-3 py-2 text-base bg-zinc-800/50 border border-zinc-700 rounded-lg text-zinc-400"
             />
           </div>
         </div>
