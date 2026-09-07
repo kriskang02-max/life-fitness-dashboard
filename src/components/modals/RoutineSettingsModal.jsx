@@ -7,6 +7,7 @@ import {
   DAILY_CHECK_LABELS,
   DEFAULT_DAILY_ITEMS_CONFIG,
   DEFAULT_AI_SETTINGS,
+  DEFAULT_NUTRITION_TARGETS,
 } from '../../utils/constants'
 
 export default function RoutineSettingsModal({
@@ -15,23 +16,34 @@ export default function RoutineSettingsModal({
   routinePresets,
   dailyItemsConfig,
   aiSettings,
+  nutritionTargets,
   onSaveWeekdays,
   onSaveDailyItems,
   onSaveAiSettings,
+  onSaveNutritionTargets,
 }) {
   const [tab, setTab] = useState('weekdays')
   const [weekdays, setWeekdays] = useState(routinePresets)
   const [items, setItems] = useState(dailyItemsConfig)
   const [ai, setAi] = useState(aiSettings)
+  const [nutrition, setNutrition] = useState(nutritionTargets)
 
   useEffect(() => {
     if (open) {
       setWeekdays({ ...routinePresets })
       setItems({ ...dailyItemsConfig })
       setAi({ ...DEFAULT_AI_SETTINGS, ...(aiSettings ?? {}) })
+      setNutrition({
+        calorieGoal: nutritionTargets?.calorieGoal ?? DEFAULT_NUTRITION_TARGETS.calorieGoal,
+        macroRatio: {
+          carbs: nutritionTargets?.macroRatio?.carbs ?? DEFAULT_NUTRITION_TARGETS.macroRatio.carbs,
+          protein: nutritionTargets?.macroRatio?.protein ?? DEFAULT_NUTRITION_TARGETS.macroRatio.protein,
+          fat: nutritionTargets?.macroRatio?.fat ?? DEFAULT_NUTRITION_TARGETS.macroRatio.fat,
+        },
+      })
       setTab('weekdays')
     }
-  }, [open, routinePresets, dailyItemsConfig, aiSettings])
+  }, [open, routinePresets, dailyItemsConfig, aiSettings, nutritionTargets])
 
   const updateItem = (key, field, value) => {
     setItems((prev) => ({
@@ -44,8 +56,14 @@ export default function RoutineSettingsModal({
     onSaveWeekdays(weekdays)
     onSaveDailyItems(items)
     onSaveAiSettings(ai)
+    onSaveNutritionTargets(nutrition)
     onClose()
   }
+
+  const macroSum =
+    Number(nutrition?.macroRatio?.carbs || 0) +
+    Number(nutrition?.macroRatio?.protein || 0) +
+    Number(nutrition?.macroRatio?.fat || 0)
 
   return (
     <Modal open={open} onClose={onClose} title="⚙️ 데일리 & 루틴 설정" wide>
@@ -70,6 +88,13 @@ export default function RoutineSettingsModal({
           className={`px-3 py-1.5 text-xs rounded-lg border ${tab === 'ai' ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300' : 'border-zinc-700 text-zinc-400'}`}
         >
           AI 파서
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('nutrition')}
+          className={`px-3 py-1.5 text-xs rounded-lg border ${tab === 'nutrition' ? 'bg-lime-500/20 border-lime-500/40 text-lime-300' : 'border-zinc-700 text-zinc-400'}`}
+        >
+          🥗 영양 목표 세팅
         </button>
       </div>
 
@@ -156,6 +181,93 @@ export default function RoutineSettingsModal({
               readOnly
               className="w-full px-3 py-2 text-base bg-zinc-800/50 border border-zinc-700 rounded-lg text-zinc-400"
             />
+          </div>
+        </div>
+      )}
+
+      {tab === 'nutrition' && (
+        <div className="space-y-4">
+          <div className="p-3 rounded-lg border border-lime-500/20 bg-lime-500/5 space-y-3">
+            <p className="text-xs text-lime-300 font-medium">일일 목표 칼로리 (kcal)</p>
+            <input
+              type="number"
+              min="100"
+              step="10"
+              value={nutrition?.calorieGoal ?? DEFAULT_NUTRITION_TARGETS.calorieGoal}
+              onChange={(e) =>
+                setNutrition((prev) => ({
+                  ...(prev ?? {}),
+                  calorieGoal: Number(e.target.value || DEFAULT_NUTRITION_TARGETS.calorieGoal),
+                }))
+              }
+              className="w-full px-3 py-2 text-base bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+            />
+          </div>
+
+          <div className="p-3 rounded-lg border border-cyan-500/20 bg-cyan-500/5 space-y-3">
+            <p className="text-xs text-cyan-300 font-medium">목표 매크로 비율 (%)</p>
+            <div className="grid grid-cols-3 gap-2">
+              <label className="text-xs text-zinc-400">
+                탄수화물
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={nutrition?.macroRatio?.carbs ?? DEFAULT_NUTRITION_TARGETS.macroRatio.carbs}
+                  onChange={(e) =>
+                    setNutrition((prev) => ({
+                      ...(prev ?? {}),
+                      macroRatio: {
+                        ...((prev ?? {}).macroRatio ?? {}),
+                        carbs: Number(e.target.value || 0),
+                      },
+                    }))
+                  }
+                  className="w-full mt-1 px-2 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+                />
+              </label>
+              <label className="text-xs text-zinc-400">
+                단백질
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={nutrition?.macroRatio?.protein ?? DEFAULT_NUTRITION_TARGETS.macroRatio.protein}
+                  onChange={(e) =>
+                    setNutrition((prev) => ({
+                      ...(prev ?? {}),
+                      macroRatio: {
+                        ...((prev ?? {}).macroRatio ?? {}),
+                        protein: Number(e.target.value || 0),
+                      },
+                    }))
+                  }
+                  className="w-full mt-1 px-2 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+                />
+              </label>
+              <label className="text-xs text-zinc-400">
+                지방
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={nutrition?.macroRatio?.fat ?? DEFAULT_NUTRITION_TARGETS.macroRatio.fat}
+                  onChange={(e) =>
+                    setNutrition((prev) => ({
+                      ...(prev ?? {}),
+                      macroRatio: {
+                        ...((prev ?? {}).macroRatio ?? {}),
+                        fat: Number(e.target.value || 0),
+                      },
+                    }))
+                  }
+                  className="w-full mt-1 px-2 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+                />
+              </label>
+            </div>
+            <p className={`text-xs ${macroSum === 100 ? 'text-emerald-400' : 'text-amber-400'}`}>
+              현재 합계: {macroSum}% (저장 시 자동으로 100%에 맞춰 정규화됩니다)
+            </p>
           </div>
         </div>
       )}

@@ -7,6 +7,7 @@ import {
   DEFAULT_FOCUS_COMPASS_DATA,
   DEFAULT_MOTIVATION_VIDEOS,
   DEFAULT_AI_SETTINGS,
+  DEFAULT_NUTRITION_TARGETS,
   MEAL_SLOT_KEYS,
 } from './constants'
 import { formatDateKey } from './dates'
@@ -171,6 +172,38 @@ export function normalizeSyncSettings(raw) {
   }
 }
 
+export function normalizeNutritionTargets(raw) {
+  const fallback = { ...DEFAULT_NUTRITION_TARGETS, macroRatio: { ...DEFAULT_NUTRITION_TARGETS.macroRatio } }
+  const calorieGoal = Number(raw?.calorieGoal)
+  const macroRaw = raw?.macroRatio ?? {}
+  const carbsRaw = Number(macroRaw.carbs)
+  const proteinRaw = Number(macroRaw.protein)
+  const fatRaw = Number(macroRaw.fat)
+
+  const clamped = {
+    carbs: Number.isFinite(carbsRaw) ? Math.max(0, carbsRaw) : fallback.macroRatio.carbs,
+    protein: Number.isFinite(proteinRaw) ? Math.max(0, proteinRaw) : fallback.macroRatio.protein,
+    fat: Number.isFinite(fatRaw) ? Math.max(0, fatRaw) : fallback.macroRatio.fat,
+  }
+
+  const sum = clamped.carbs + clamped.protein + clamped.fat
+  const macroRatio =
+    sum > 0
+      ? {
+          carbs: Math.round((clamped.carbs / sum) * 100),
+          protein: Math.round((clamped.protein / sum) * 100),
+          fat: 0,
+        }
+      : { ...fallback.macroRatio }
+
+  macroRatio.fat = Math.max(0, 100 - macroRatio.carbs - macroRatio.protein)
+
+  return {
+    calorieGoal: Number.isFinite(calorieGoal) ? Math.max(100, Math.round(calorieGoal)) : fallback.calorieGoal,
+    macroRatio,
+  }
+}
+
 export function normalizeFocusCompassData(raw, goalSettings = null) {
   const base = {
     target: { ...DEFAULT_FOCUS_COMPASS_DATA.target },
@@ -220,6 +253,8 @@ function normalizeMealItems(items) {
       protein: Number(item.protein) || 0,
       carbs: Number(item.carbs) || 0,
       fat: Number(item.fat) || 0,
+      sugar: Number(item.sugar) || 0,
+      sodium: Number(item.sodium) || 0,
     }))
 }
 
@@ -237,6 +272,8 @@ function normalizeMealLog(entry) {
     protein: Number(entry?.totals?.protein) || items.reduce((sum, item) => sum + (item.protein || 0), 0),
     carbs: Number(entry?.totals?.carbs) || items.reduce((sum, item) => sum + (item.carbs || 0), 0),
     fat: Number(entry?.totals?.fat) || items.reduce((sum, item) => sum + (item.fat || 0), 0),
+    sugar: Number(entry?.totals?.sugar) || items.reduce((sum, item) => sum + (item.sugar || 0), 0),
+    sodium: Number(entry?.totals?.sodium) || items.reduce((sum, item) => sum + (item.sodium || 0), 0),
   }
 
   return {
@@ -299,6 +336,7 @@ export function getDefaultData() {
   return {
     daily_logs: generateMockDailyLogs(),
     diet_logs: {},
+    nutrition_targets: normalizeNutritionTargets(null),
     body_measurements: [...DEFAULT_BODY_MEASUREMENTS],
     running_records: [...DEFAULT_RUNNING_RECORDS],
     routine_presets: { ...DEFAULT_ROUTINE_PRESETS },
@@ -354,6 +392,7 @@ export function loadAllData() {
   return {
     daily_logs: readJSON(STORAGE_KEYS.daily_logs, defaults.daily_logs),
     diet_logs: normalizeDietLogs(readJSON(STORAGE_KEYS.diet_logs, defaults.diet_logs)),
+    nutrition_targets: normalizeNutritionTargets(readJSON(STORAGE_KEYS.nutrition_targets, null)),
     body_measurements: measurements.body_measurements,
     running_records: measurements.running_records,
     routine_presets: normalizeWeekdays(readJSON(STORAGE_KEYS.routine_presets, null)),
@@ -370,6 +409,7 @@ export function loadAllData() {
 export function saveAllData(data) {
   saveDailyLogs(data.daily_logs)
   saveDietLogs(data.diet_logs)
+  saveNutritionTargets(data.nutrition_targets)
   saveBodyMeasurements(data.body_measurements)
   saveRunningRecords(data.running_records)
   saveRoutinePresets(data.routine_presets)
@@ -388,6 +428,10 @@ export function saveDailyLogs(logs) {
 
 export function saveDietLogs(logs) {
   writeJSON(STORAGE_KEYS.diet_logs, normalizeDietLogs(logs))
+}
+
+export function saveNutritionTargets(targets) {
+  writeJSON(STORAGE_KEYS.nutrition_targets, normalizeNutritionTargets(targets))
 }
 
 export function saveBodyMeasurements(items) {
@@ -463,6 +507,7 @@ export function importAllData(data) {
   const merged = {
     daily_logs: data.daily_logs ?? defaults.daily_logs,
     diet_logs: normalizeDietLogs(data.diet_logs ?? defaults.diet_logs),
+    nutrition_targets: normalizeNutritionTargets(data.nutrition_targets),
     body_measurements: measurements.body_measurements,
     running_records: measurements.running_records,
     routine_presets: normalizeWeekdays(data.routine_presets),

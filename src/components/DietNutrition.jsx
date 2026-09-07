@@ -5,7 +5,7 @@ import DateNavigator from './DateNavigator'
 import MealCard from './MealCard'
 import { formatDateKey } from '../utils/dates'
 import { createMeasurementId, createEmptyDietSlots, ensureDietLog } from '../utils/storage'
-import { GEMINI_KEY_REQUIRED_MESSAGE, parseNutritionText } from '../utils/nutritionParser'
+import { GEMINI_KEY_REQUIRED_MESSAGE, parseNutritionText } from '../services/geminiNutrition'
 
 const SLOT_META = [
   { key: 'morning', label: '아침', emoji: '🌅', defaultTime: '07:30' },
@@ -14,8 +14,10 @@ const SLOT_META = [
   { key: 'snack', label: '간식·야식', emoji: '☕', defaultTime: '21:30' },
 ]
 
-const CALORIE_GOAL = 1800
-const TARGET_MACRO_RATIO = { carbs: 40, protein: 35, fat: 25 }
+const DEFAULT_CALORIE_GOAL = 1800
+const DEFAULT_TARGET_MACRO_RATIO = { carbs: 40, protein: 35, fat: 25 }
+const SUGAR_LIMIT = 30
+const SODIUM_LIMIT = 2000
 
 function sumDayTotals(mealList) {
   return mealList.reduce(
@@ -26,9 +28,11 @@ function sumDayTotals(mealList) {
         protein: acc.protein + (Number(meal?.totals?.protein) || 0),
         carbs: acc.carbs + (Number(meal?.totals?.carbs) || 0),
         fat: acc.fat + (Number(meal?.totals?.fat) || 0),
+        sugar: acc.sugar + (Number(meal?.totals?.sugar) || 0),
+        sodium: acc.sodium + (Number(meal?.totals?.sodium) || 0),
       }
     },
-    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+    { calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0, sodium: 0 },
   )
 }
 
@@ -102,6 +106,7 @@ export default function DietNutrition({
   onDateChange,
   dietLogs,
   aiSettings,
+  nutritionTargets,
   onUpdateDietLogs,
 }) {
   const [drafts, setDrafts] = useState(() => initialDraftsFromSlots(createEmptyDietSlots()))
@@ -123,6 +128,8 @@ export default function DietNutrition({
     [currentSlots],
   )
   const totals = useMemo(() => sumDayTotals(dailyMeals), [dailyMeals])
+  const calorieGoal = Math.max(100, Number(nutritionTargets?.calorieGoal) || DEFAULT_CALORIE_GOAL)
+  const targetMacroRatio = nutritionTargets?.macroRatio ?? DEFAULT_TARGET_MACRO_RATIO
 
   const macroCalories = useMemo(
     () => ({
@@ -151,7 +158,7 @@ export default function DietNutrition({
       },
       {
         label: '목표 비율',
-        data: [TARGET_MACRO_RATIO.carbs, TARGET_MACRO_RATIO.protein, TARGET_MACRO_RATIO.fat],
+        data: [targetMacroRatio.carbs, targetMacroRatio.protein, targetMacroRatio.fat],
         backgroundColor: ['rgba(52, 211, 153, 0.2)', 'rgba(34, 211, 238, 0.2)', 'rgba(217, 70, 239, 0.2)'],
         borderWidth: 0,
       },
@@ -175,7 +182,9 @@ export default function DietNutrition({
   }
 
   const indicator = useMemo(() => findLastMealIndicator(currentSlots), [currentSlots])
-  const calorieProgress = Math.min(100, (totals.calories / CALORIE_GOAL) * 100)
+  const calorieProgress = Math.min(100, (totals.calories / calorieGoal) * 100)
+  const sugarProgress = Math.min(100, (totals.sugar / SUGAR_LIMIT) * 100)
+  const sodiumProgress = Math.min(100, (totals.sodium / SODIUM_LIMIT) * 100)
 
   const updateDraft = (slotKey, field, value) => {
     setDrafts((prev) => ({
@@ -271,7 +280,7 @@ export default function DietNutrition({
     <section className="space-y-5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Diet & Nutrition</h2>
-        <span className="text-xs text-zinc-500">파서: Gemini 2.5 Flash / 목표 {CALORIE_GOAL}kcal</span>
+        <span className="text-xs text-zinc-500">파서: Gemini 2.5 Flash / 목표 {calorieGoal}kcal</span>
       </div>
 
       <DateNavigator selectedDate={selectedDate} onDateChange={onDateChange} />
@@ -303,7 +312,7 @@ export default function DietNutrition({
         <div className="card-glow rounded-2xl border border-zinc-800/70 bg-zinc-900/60 p-4 space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-zinc-300">일일 칼로리 진행도</span>
-            <span className="text-amber-300 font-medium">{fmt(totals.calories, 'kcal')} / {CALORIE_GOAL}kcal</span>
+            <span className="text-amber-300 font-medium">{fmt(totals.calories, 'kcal')} / {calorieGoal}kcal</span>
           </div>
           <div className="h-2.5 rounded-full bg-zinc-800 overflow-hidden">
             <div
@@ -311,7 +320,47 @@ export default function DietNutrition({
               style={{ width: `${calorieProgress}%` }}
             />
           </div>
-          <p className="text-xs text-zinc-500">총합: 탄 {fmt(totals.carbs)} · 단 {fmt(totals.protein)} · 지 {fmt(totals.fat)}</p>
+          <p className="text-xs text-zinc-500">
+            총합: 탄 {fmt(totals.carbs)} · 단 {fmt(totals.protein)} · 지 {fmt(totals.fat)} · 당 {fmt(totals.sugar)} · 나트륨 {fmt(totals.sodium, 'mg')}
+          </p>
+        </div>
+
+        <div className="card-glow rounded-2xl border border-zinc-800/70 bg-zinc-900/60 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-zinc-300">클린 섭취 케어 바</p>
+            <div className="flex items-center gap-2">
+              {totals.sugar > SUGAR_LIMIT && (
+                <span className="text-[11px] px-2 py-1 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-300">
+                  ⚠️ 당류 과다 주의
+                </span>
+              )}
+              {totals.sodium > SODIUM_LIMIT && (
+                <span className="text-[11px] px-2 py-1 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-300">
+                  ⚠️ 나트륨 과다 (붓기·수분정체 주의)
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-zinc-400">당류</span>
+              <span className="text-orange-300">{fmt(totals.sugar)} / {SUGAR_LIMIT}g</span>
+            </div>
+            <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-orange-400 to-amber-500" style={{ width: `${sugarProgress}%` }} />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-zinc-400">나트륨</span>
+              <span className="text-sky-300">{fmt(totals.sodium, 'mg')} / {SODIUM_LIMIT}mg</span>
+            </div>
+            <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-sky-400 to-cyan-500" style={{ width: `${sodiumProgress}%` }} />
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-3">
@@ -340,7 +389,7 @@ export default function DietNutrition({
               <Doughnut data={donutData} options={donutOptions} />
             </div>
             <div className="mt-3 text-xs text-zinc-500 space-y-1">
-              <p>목표 비율: 탄 {TARGET_MACRO_RATIO.carbs}% · 단 {TARGET_MACRO_RATIO.protein}% · 지 {TARGET_MACRO_RATIO.fat}%</p>
+              <p>목표 비율: 탄 {targetMacroRatio.carbs}% · 단 {targetMacroRatio.protein}% · 지 {targetMacroRatio.fat}%</p>
               <p>실제 비율: 탄 {macroActualRatio.carbs.toFixed(1)}% · 단 {macroActualRatio.protein.toFixed(1)}% · 지 {macroActualRatio.fat.toFixed(1)}%</p>
             </div>
           </div>

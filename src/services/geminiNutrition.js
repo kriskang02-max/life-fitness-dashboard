@@ -60,14 +60,17 @@ function buildPrompt(text) {
   "carbs": 70,
   "protein": 55,
   "fat": 38,
+  "sugar": 12,
+  "sodium": 1450,
   "summary": "장어구이 1.5마리와 쌀밥 1공기"
 }
 
 규칙:
 1) 숫자 필드는 반드시 number 타입으로 반환
 2) summary는 1문장 한국어 요약
-3) 코드블록 없이 JSON object만 반환
-4) 정보가 불완전하면 현실적인 추정치로 계산
+3) sugar는 g 단위 추정값, sodium은 mg 단위 추정값
+4) 외식/가공식품은 당류/나트륨을 보수적으로 현실 추정
+5) 코드블록 없이 JSON object만 반환
 
 식사 기록:
 ${text}`
@@ -78,6 +81,8 @@ function normalizeGeminiResult(rawResult, originalText) {
   const carbs = toNumber(rawResult?.carbs)
   const protein = toNumber(rawResult?.protein)
   const fat = toNumber(rawResult?.fat)
+  const sugar = toNumber(rawResult?.sugar)
+  const sodium = toNumber(rawResult?.sodium)
   const summary = String(rawResult?.summary ?? originalText).trim() || originalText
 
   return {
@@ -89,6 +94,8 @@ function normalizeGeminiResult(rawResult, originalText) {
         carbs,
         protein,
         fat,
+        sugar,
+        sodium,
       },
     ],
     totals: {
@@ -96,6 +103,8 @@ function normalizeGeminiResult(rawResult, originalText) {
       carbs,
       protein,
       fat,
+      sugar,
+      sodium,
     },
     summary,
     provider: 'gemini',

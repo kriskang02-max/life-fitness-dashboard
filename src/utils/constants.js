@@ -1,6 +1,7 @@
 export const STORAGE_KEYS = {
   daily_logs: 'daily_logs',
   diet_logs: 'diet_logs',
+  nutrition_targets: 'nutrition_targets',
   body_measurements: 'body_measurements',
   running_records: 'running_records',
   /** @deprecated migrated to body_measurements + running_records */
@@ -115,6 +116,15 @@ export const DEFAULT_SYNC_SETTINGS = {
 export const DEFAULT_AI_SETTINGS = {
   geminiApiKey: '',
   geminiModel: 'gemini-2.5-flash',
+}
+
+export const DEFAULT_NUTRITION_TARGETS = {
+  calorieGoal: 1800,
+  macroRatio: {
+    carbs: 40,
+    protein: 35,
+    fat: 25,
+  },
 }
 
 /** @deprecated use daily_items_config */

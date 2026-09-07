@@ -25,6 +25,7 @@ export default function App() {
     syncMessage,
     updateDailyLogs,
     updateDietLogs,
+    updateNutritionTargets,
     updateBodyMeasurements,
     updateRunningRecords,
     updateRoutinePresets,
@@ -263,6 +264,7 @@ export default function App() {
                   onDateChange={setSelectedDate}
                   dietLogs={data.diet_logs}
                   aiSettings={data.ai_settings}
+                  nutritionTargets={data.nutrition_targets}
                   onUpdateDietLogs={updateDietLogs}
                 />
               ),
@@ -277,9 +279,11 @@ export default function App() {
         routinePresets={data.routine_presets}
         dailyItemsConfig={data.daily_items_config}
         aiSettings={data.ai_settings}
+        nutritionTargets={data.nutrition_targets}
         onSaveWeekdays={updateRoutinePresets}
         onSaveDailyItems={updateDailyItemsConfig}
         onSaveAiSettings={updateAiSettings}
+        onSaveNutritionTargets={updateNutritionTargets}
       />
 
       <SyncSettingsModal

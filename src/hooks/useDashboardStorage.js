@@ -19,6 +19,7 @@ function buildSyncPayload(data) {
   return {
     daily_logs: data.daily_logs,
     diet_logs: data.diet_logs,
+    nutrition_targets: data.nutrition_targets,
     body_measurements: data.body_measurements,
     running_records: data.running_records,
     routine_presets: data.routine_presets,
@@ -289,6 +290,15 @@ export function useDashboardStorage() {
     [mutate],
   )
 
+  const updateNutritionTargets = useCallback(
+    (updater) =>
+      mutate((prev) => ({
+        ...prev,
+        nutrition_targets: typeof updater === 'function' ? updater(prev.nutrition_targets) : updater,
+      })),
+    [mutate],
+  )
+
   const updateRunningRecords = useCallback(
     (updater) => mutate((prev) => ({
       ...prev,
@@ -363,6 +373,7 @@ export function useDashboardStorage() {
     syncMessage,
     updateDailyLogs,
     updateDietLogs,
+    updateNutritionTargets,
     updateBodyMeasurements,
     updateRunningRecords,
     updateRoutinePresets,

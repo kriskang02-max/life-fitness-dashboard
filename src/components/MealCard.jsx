@@ -29,7 +29,7 @@ export default function MealCard({
   onClear,
   onRestore,
 }) {
-  const totals = meal?.totals ?? { calories: 0, carbs: 0, protein: 0, fat: 0 }
+  const totals = meal?.totals ?? { calories: 0, carbs: 0, protein: 0, fat: 0, sugar: 0, sodium: 0 }
   const hasMeal = Boolean(meal?.text)
 
   return (
@@ -47,6 +47,8 @@ export default function MealCard({
               <MacroBadge label="탄" value={fmt(totals.carbs, 'g')} tone="border-emerald-500/30 bg-emerald-500/10 text-emerald-300" />
               <MacroBadge label="단" value={fmt(totals.protein, 'g')} tone="border-cyan-500/30 bg-cyan-500/10 text-cyan-300" />
               <MacroBadge label="지" value={fmt(totals.fat, 'g')} tone="border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-300" />
+              <MacroBadge label="당" value={fmt(totals.sugar, 'g')} tone="border-orange-500/30 bg-orange-500/10 text-orange-300" />
+              <MacroBadge label="나트륨" value={fmt(totals.sodium, 'mg')} tone="border-sky-500/30 bg-sky-500/10 text-sky-300" />
             </>
           )}
         </div>
