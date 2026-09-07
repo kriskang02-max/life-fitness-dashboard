@@ -47,12 +47,13 @@ export default function MealCard({
   return (
     <article className="card-glow rounded-2xl border border-zinc-800/80 bg-zinc-900/65 p-4 space-y-2.5" title={hint || ''}>
       <div className="flex items-start justify-between gap-2">
-        <div>
+        <div className="shrink-0">
           <p className="text-xs text-zinc-500 uppercase tracking-wider">{slotKey}</p>
           <h3 className="text-sm font-semibold text-zinc-100">{emoji} {title}</h3>
         </div>
 
-        <div className="flex flex-wrap justify-end gap-1.5">
+        <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex flex-nowrap justify-end gap-1.5 whitespace-nowrap pl-2">
           {hasMeal && (
             <>
               <MacroBadge label="kcal" value={fmt(totals.calories, '')} tone="border-amber-500/30 bg-amber-500/10 text-amber-300" />
@@ -63,6 +64,7 @@ export default function MealCard({
               <MacroBadge label="나트륨" value={fmt(totals.sodium, 'mg')} tone="border-sky-500/30 bg-sky-500/10 text-sky-300" />
             </>
           )}
+          </div>
         </div>
       </div>
 
