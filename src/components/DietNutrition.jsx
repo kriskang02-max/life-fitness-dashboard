@@ -45,6 +45,11 @@ function fmt(value, unit = 'g') {
   return `${display}${unit}`
 }
 
+function fmtSodiumGram(mgValue) {
+  const g = (Number(mgValue) || 0) / 1000
+  return `${g.toFixed(1)}g`
+}
+
 function initialDraftsFromSlots(slots) {
   const draft = {}
   for (const slot of SLOT_META) {
@@ -591,8 +596,8 @@ export default function DietNutrition({
               style={{ width: `${calorieProgress}%` }}
             />
           </div>
-          <p className="text-xs text-zinc-500">
-            총합: 탄 {fmt(totals.carbs)} · 단 {fmt(totals.protein)} · 지 {fmt(totals.fat)} · 당 {fmt(totals.sugar)} · 나트륨 {fmt(totals.sodium, 'mg')}
+          <p className="text-[11px] text-zinc-500">
+            총합: 탄 {fmt(totals.carbs)} · 단 {fmt(totals.protein)} · 지 {fmt(totals.fat)} · 당 {fmt(totals.sugar)} · 나트륨 {fmtSodiumGram(totals.sodium)}
           </p>
         </div>
 
@@ -614,7 +619,7 @@ export default function DietNutrition({
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-[11px]">
               <span className="text-zinc-400">당류</span>
               <span className="text-orange-300">{fmt(totals.sugar)} / {sugarLimit}g</span>
             </div>
@@ -624,9 +629,9 @@ export default function DietNutrition({
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-[11px]">
               <span className="text-zinc-400">나트륨</span>
-              <span className="text-sky-300">{fmt(totals.sodium, 'mg')} / {sodiumLimit}mg</span>
+              <span className="text-sky-300">{fmtSodiumGram(totals.sodium)} / {fmtSodiumGram(sodiumLimit)}</span>
             </div>
             <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
               <div className="h-full bg-gradient-to-r from-sky-400 to-cyan-500" style={{ width: `${sodiumProgress}%` }} />

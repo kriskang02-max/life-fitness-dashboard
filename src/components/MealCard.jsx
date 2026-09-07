@@ -5,6 +5,11 @@ function fmt(value, unit) {
   return `${Number.isInteger(num) ? num : num.toFixed(1)}${unit}`
 }
 
+function fmtSodiumGram(mgValue) {
+  const g = (Number(mgValue) || 0) / 1000
+  return `${g.toFixed(1)}g`
+}
+
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 const MINUTES = ['00', '30']
 
@@ -18,7 +23,7 @@ function parseTimeValue(timeValue) {
 
 function MacroBadge({ label, value, tone }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${tone}`}>
+    <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] ${tone}`}>
       <span>{label}</span>
       <strong>{value}</strong>
     </span>
@@ -53,7 +58,7 @@ export default function MealCard({
         </div>
 
         <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex flex-nowrap justify-end gap-1.5 whitespace-nowrap pl-2">
+          <div className="flex w-max min-w-full flex-nowrap gap-1.5 whitespace-nowrap pl-2">
           {hasMeal && (
             <>
               <MacroBadge label="kcal" value={fmt(totals.calories, '')} tone="border-amber-500/30 bg-amber-500/10 text-amber-300" />
@@ -61,7 +66,7 @@ export default function MealCard({
               <MacroBadge label="단" value={fmt(totals.protein, 'g')} tone="border-cyan-500/30 bg-cyan-500/10 text-cyan-300" />
               <MacroBadge label="지" value={fmt(totals.fat, 'g')} tone="border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-300" />
               <MacroBadge label="당" value={fmt(totals.sugar, 'g')} tone="border-orange-500/30 bg-orange-500/10 text-orange-300" />
-              <MacroBadge label="나트륨" value={fmt(totals.sodium, 'mg')} tone="border-sky-500/30 bg-sky-500/10 text-sky-300" />
+              <MacroBadge label="나트륨" value={fmtSodiumGram(totals.sodium)} tone="border-sky-500/30 bg-sky-500/10 text-sky-300" />
             </>
           )}
           </div>
