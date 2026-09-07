@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Doughnut } from 'react-chartjs-2'
+import { Chart, Doughnut } from 'react-chartjs-2'
 import '../chartSetup.js'
 import DateNavigator from './DateNavigator'
 import MealCard from './MealCard'
-import { formatDateKey } from '../utils/dates'
+import { addDays, formatDateKey, getDayKey, parseDateKey } from '../utils/dates'
+import { DAY_LABELS } from '../utils/constants'
 import { createMeasurementId, createEmptyDietSlots, ensureDietLog } from '../utils/storage'
 import { GEMINI_KEY_REQUIRED_MESSAGE, parseNutritionText } from '../services/geminiNutrition'
 
@@ -18,6 +19,8 @@ const DEFAULT_CALORIE_GOAL = 1800
 const DEFAULT_SUGAR_LIMIT = 30
 const DEFAULT_SODIUM_LIMIT = 2000
 const DEFAULT_TARGET_MACRO_RATIO = { carbs: 40, protein: 35, fat: 25 }
+const CLEAN_DINNER_CUTOFF = 20 * 60 + 30
+const SODIUM_DEFENSE_BASELINE = 2500
 
 function sumDayTotals(mealList) {
   return mealList.reduce(
@@ -71,6 +74,152 @@ function parseTimeToMinutes(timeText) {
   const [hh, mm] = timeText.split(':').map(Number)
   if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null
   return hh * 60 + mm
+}
+
+function getMealsFromEntry(entry) {
+  if (!entry) return []
+  if (entry.slots && typeof entry.slots === 'object') {
+    return Object.values(entry.slots).filter(Boolean)
+  }
+  if (Array.isArray(entry.meals)) return entry.meals.filter(Boolean)
+  return []
+}
+
+function buildDaySummary(dateKey, entry, calorieGoal) {
+  const meals = getMealsFromEntry(entry)
+  const totals = sumDayTotals(meals)
+  const times = meals
+    .map((meal) => parseTimeToMinutes(meal?.time))
+    .filter((v) => v != null)
+
+  const firstMealMinutes = times.length > 0 ? Math.min(...times) : null
+  const lastMealMinutes = times.length > 0 ? Math.max(...times) : null
+  const dinner = entry?.slots?.dinner ?? meals.find((meal) => meal?.slot === 'dinner')
+  const dinnerMinutes = parseTimeToMinutes(dinner?.time)
+
+  const hasData = meals.length > 0
+  const cleanDay =
+    hasData &&
+    totals.calories > 0 &&
+    totals.calories <= calorieGoal &&
+    dinnerMinutes != null &&
+    dinnerMinutes <= CLEAN_DINNER_CUTOFF
+
+  return {
+    dateKey,
+    totals,
+    hasData,
+    cleanDay,
+    firstMealMinutes,
+    lastMealMinutes,
+  }
+}
+
+function buildTrendChartData(summaries, calorieGoal) {
+  const labels = summaries.map((item) => {
+    const date = parseDateKey(item.dateKey)
+    const dayLabel = DAY_LABELS[getDayKey(date)]
+    return `${date.getMonth() + 1}/${date.getDate()}(${dayLabel})`
+  })
+
+  return {
+    labels,
+    datasets: [
+      {
+        type: 'bar',
+        label: '탄수화물 kcal',
+        data: summaries.map((item) => item.totals.carbs * 4),
+        backgroundColor: 'rgba(16, 185, 129, 0.75)',
+        borderColor: 'rgba(16, 185, 129, 1)',
+        borderWidth: 1,
+        stack: 'kcal',
+      },
+      {
+        type: 'bar',
+        label: '단백질 kcal',
+        data: summaries.map((item) => item.totals.protein * 4),
+        backgroundColor: 'rgba(6, 182, 212, 0.75)',
+        borderColor: 'rgba(6, 182, 212, 1)',
+        borderWidth: 1,
+        stack: 'kcal',
+      },
+      {
+        type: 'bar',
+        label: '지방 kcal',
+        data: summaries.map((item) => item.totals.fat * 9),
+        backgroundColor: 'rgba(168, 85, 247, 0.75)',
+        borderColor: 'rgba(168, 85, 247, 1)',
+        borderWidth: 1,
+        stack: 'kcal',
+      },
+      {
+        type: 'line',
+        label: `목표 ${calorieGoal}kcal`,
+        data: summaries.map(() => calorieGoal),
+        borderColor: 'rgba(251, 146, 60, 0.95)',
+        borderWidth: 1.8,
+        borderDash: [6, 6],
+        pointRadius: 0,
+        tension: 0,
+      },
+    ],
+  }
+}
+
+function average(numbers) {
+  if (!numbers.length) return 0
+  return numbers.reduce((sum, n) => sum + n, 0) / numbers.length
+}
+
+function statusTone(kind, value) {
+  if (kind === 'protein') {
+    if (value >= 90) return 'bg-emerald-400'
+    if (value >= 70) return 'bg-yellow-400'
+    return 'bg-red-400'
+  }
+  if (kind === 'sugar') {
+    if (value >= 90) return 'bg-emerald-400'
+    if (value >= 70) return 'bg-yellow-400'
+    return 'bg-red-400'
+  }
+  if (kind === 'sodium') {
+    if (value >= 90) return 'bg-emerald-400'
+    if (value >= 70) return 'bg-yellow-400'
+    return 'bg-red-400'
+  }
+  return 'bg-zinc-500'
+}
+
+function Sparkline({ values, stroke }) {
+  if (!values || values.length < 2) {
+    return <div className="h-10 rounded bg-zinc-800/50" />
+  }
+
+  const w = 120
+  const h = 40
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = max - min || 1
+  const points = values
+    .map((v, i) => {
+      const x = (i / (values.length - 1)) * w
+      const y = h - ((v - min) / range) * h
+      return `${x},${y}`
+    })
+    .join(' ')
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-10 w-full">
+      <polyline
+        fill="none"
+        stroke={stroke}
+        strokeWidth="2"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        points={points}
+      />
+    </svg>
+  )
 }
 
 function findLastMealIndicator(slots) {
@@ -200,6 +349,110 @@ export default function DietNutrition({
   const calorieProgress = Math.min(100, (totals.calories / calorieGoal) * 100)
   const sugarProgress = Math.min(100, (totals.sugar / sugarLimit) * 100)
   const sodiumProgress = Math.min(100, (totals.sodium / sodiumLimit) * 100)
+
+  const recentSevenKeys = useMemo(() => {
+    const keys = Object.keys(normalizedLogs)
+      .filter((key) => key <= dateKey)
+      .filter((key) => getMealsFromEntry(normalizedLogs[key]).length > 0)
+      .sort()
+      .slice(-7)
+    if (keys.length === 0) return [dateKey]
+    return keys
+  }, [normalizedLogs, dateKey])
+
+  const trendSummaries = useMemo(
+    () => recentSevenKeys.map((key) => buildDaySummary(key, normalizedLogs[key], calorieGoal)),
+    [recentSevenKeys, normalizedLogs, calorieGoal],
+  )
+
+  const trackedSummaries = useMemo(
+    () => trendSummaries.filter((day) => day.hasData),
+    [trendSummaries],
+  )
+
+  const weeklyCleanSuccess = trackedSummaries.filter((day) => day.cleanDay).length
+  const weeklyCleanTotal = trackedSummaries.length
+  const weeklyCleanPercent = weeklyCleanTotal ? Math.round((weeklyCleanSuccess / weeklyCleanTotal) * 100) : 0
+
+  const cleanStreak = useMemo(() => {
+    let count = 0
+    const base = new Date(selectedDate)
+    base.setHours(0, 0, 0, 0)
+    for (let i = 0; i < 120; i++) {
+      const key = formatDateKey(addDays(base, -i))
+      const summary = buildDaySummary(key, normalizedLogs[key], calorieGoal)
+      if (summary.cleanDay) {
+        count += 1
+      } else {
+        break
+      }
+    }
+    return count
+  }, [selectedDate, normalizedLogs, calorieGoal])
+
+  const avgFastingHours = useMemo(() => {
+    const base = new Date(selectedDate)
+    base.setHours(0, 0, 0, 0)
+    const eightKeys = Array.from({ length: 8 }, (_, i) => formatDateKey(addDays(base, i - 7)))
+    const eightSummaries = eightKeys.map((key) => buildDaySummary(key, normalizedLogs[key], calorieGoal))
+    const fastingSamples = []
+
+    for (let i = 1; i < eightSummaries.length; i++) {
+      const prev = eightSummaries[i - 1]
+      const current = eightSummaries[i]
+      if (prev.lastMealMinutes == null || current.firstMealMinutes == null) continue
+      const duration = (24 * 60 - prev.lastMealMinutes + current.firstMealMinutes) / 60
+      if (duration > 0 && duration < 30) fastingSamples.push(duration)
+    }
+
+    return fastingSamples.length ? average(fastingSamples) : null
+  }, [selectedDate, normalizedLogs, calorieGoal])
+
+  const trendChartData = useMemo(
+    () => buildTrendChartData(trendSummaries, calorieGoal),
+    [trendSummaries, calorieGoal],
+  )
+
+  const trendChartOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: { color: '#a1a1aa', font: { size: 11 } },
+        },
+      },
+      scales: {
+        x: {
+          stacked: true,
+          ticks: { color: '#71717a', maxRotation: 0, autoSkip: true },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          ticks: { color: '#a1a1aa' },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          title: { display: true, text: 'kcal', color: '#a1a1aa', font: { size: 10 } },
+        },
+      },
+    }),
+    [],
+  )
+
+  const proteinTargetGram = (calorieGoal * (targetMacroRatio.protein || 0)) / 100 / 4
+  const avgProtein = average(trackedSummaries.map((day) => day.totals.protein))
+  const avgSugar = average(trackedSummaries.map((day) => day.totals.sugar))
+  const avgSodium = average(trackedSummaries.map((day) => day.totals.sodium))
+
+  const proteinAchieveRate = proteinTargetGram > 0 ? (avgProtein / proteinTargetGram) * 100 : 0
+  const sugarDefenseRate = weeklyCleanTotal
+    ? (trackedSummaries.filter((day) => day.totals.sugar <= 30).length / weeklyCleanTotal) * 100
+    : 0
+  const sodiumDefenseRate = weeklyCleanTotal
+    ? (trackedSummaries.filter((day) => day.totals.sodium <= SODIUM_DEFENSE_BASELINE).length / weeklyCleanTotal) * 100
+    : 0
 
   const updateDraft = (slotKey, field, value) => {
     setDrafts((prev) => ({
@@ -412,6 +665,96 @@ export default function DietNutrition({
             </div>
           </div>
         </div>
+
+        <section className="card-glow rounded-2xl border border-zinc-800/70 bg-zinc-900/60 p-4 space-y-4 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-sm font-semibold text-zinc-300">Diet Habit & Trend Engine</h4>
+            <span className="text-[11px] text-zinc-500">
+              최근 {trendSummaries.length}일 기준
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2">
+              <p className="text-[11px] text-zinc-400">연속 달성 스트릭</p>
+              <p className="text-sm font-semibold text-emerald-300 mt-1">
+                🔥 {cleanStreak}일 연속 클린 데이 유지 중
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-3 py-2">
+              <p className="text-[11px] text-zinc-400">주간 클린 식단 스코어</p>
+              <p className="text-sm font-semibold text-cyan-300 mt-1">
+                {weeklyCleanSuccess} / {weeklyCleanTotal}일 성공 ({weeklyCleanPercent}%)
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-indigo-500/25 bg-indigo-500/10 px-3 py-2">
+              <p className="text-[11px] text-zinc-400">평균 야간 공복 시간</p>
+              <p className="text-sm font-semibold text-indigo-300 mt-1">
+                🌙 {avgFastingHours == null ? '기록 없음' : `${avgFastingHours.toFixed(1)}시간 공복`}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
+            <p className="text-xs text-zinc-400 mb-2">최근 7일 칼로리 & 탄단지 트렌드</p>
+            <div className="chart-canvas-wrap h-64">
+              <Chart type="bar" data={trendChartData} options={trendChartOptions} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 min-w-0">
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-zinc-400">단백질 7일 평균</p>
+                <span className={`w-2.5 h-2.5 rounded-full ${statusTone('protein', proteinAchieveRate)}`} />
+              </div>
+              <p className="text-sm text-zinc-200 mt-1">
+                {avgProtein.toFixed(1)}g · 목표 대비 {Math.round(proteinAchieveRate)}%
+              </p>
+              <Sparkline
+                values={trendSummaries.map((day) => day.totals.protein)}
+                stroke="rgba(34, 211, 238, 0.9)"
+              />
+            </div>
+
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-zinc-400">당류 7일 평균</p>
+                <span className={`w-2.5 h-2.5 rounded-full ${statusTone('sugar', sugarDefenseRate)}`} />
+              </div>
+              <p className="text-sm text-zinc-200 mt-1">
+                {avgSugar.toFixed(1)}g · 30g 이하 방어율 {Math.round(sugarDefenseRate)}%
+              </p>
+              <Sparkline
+                values={trendSummaries.map((day) => day.totals.sugar)}
+                stroke="rgba(251, 146, 60, 0.95)"
+              />
+            </div>
+
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-zinc-400">나트륨 7일 평균</p>
+                <span className={`w-2.5 h-2.5 rounded-full ${statusTone('sodium', sodiumDefenseRate)}`} />
+              </div>
+              <p className="text-sm text-zinc-200 mt-1">
+                {avgSodium.toFixed(0)}mg · 2500mg 이하 방어율 {Math.round(sodiumDefenseRate)}%
+              </p>
+              <Sparkline
+                values={trendSummaries.map((day) => day.totals.sodium)}
+                stroke="rgba(56, 189, 248, 0.95)"
+              />
+            </div>
+          </div>
+
+          <p className="text-[11px] text-zinc-500">
+            기준: 클린 데이 = 목표 칼로리 이하 + 저녁 20:30 이전.
+            {trackedSummaries.length > 0
+              ? ` 분석 데이터 ${trackedSummaries.length}일 (${trendSummaries[0]?.dateKey} ~ ${trendSummaries[trendSummaries.length - 1]?.dateKey})`
+              : ' 아직 누적 식단 데이터가 없어 지표를 계산할 수 없습니다.'}
+          </p>
+        </section>
       </div>
     </section>
   )
