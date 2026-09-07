@@ -5,6 +5,17 @@ function fmt(value, unit) {
   return `${Number.isInteger(num) ? num : num.toFixed(1)}${unit}`
 }
 
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+const MINUTES = ['00', '30']
+
+function parseTimeValue(timeValue) {
+  if (!timeValue || !/^\d{2}:\d{2}$/.test(timeValue)) return { hh: '00', mm: '00' }
+  const [hhRaw, mmRaw] = timeValue.split(':')
+  const hh = HOURS.includes(hhRaw) ? hhRaw : '00'
+  const mm = mmRaw === '30' ? '30' : '00'
+  return { hh, mm }
+}
+
 function MacroBadge({ label, value, tone }) {
   return (
     <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${tone}`}>
@@ -31,6 +42,7 @@ export default function MealCard({
 }) {
   const totals = meal?.totals ?? { calories: 0, carbs: 0, protein: 0, fat: 0, sugar: 0, sodium: 0 }
   const hasMeal = Boolean(meal?.text)
+  const { hh, mm } = parseTimeValue(timeValue)
 
   return (
     <article className="card-glow rounded-2xl border border-zinc-800/80 bg-zinc-900/65 p-4 space-y-2.5" title={hint || ''}>
@@ -54,15 +66,33 @@ export default function MealCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-[5.25rem_1fr_auto_auto_auto] items-center gap-2">
-        <input
-          type="time"
-          value={timeValue}
-          onChange={(e) => onTimeChange(e.target.value)}
-          step={1800}
-          className="w-full px-2 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
-          aria-label={`${title} 식사 시간`}
-        />
+      <div className="grid grid-cols-[6.75rem_minmax(0,1fr)_auto_auto_auto] items-center gap-2">
+        <div className="grid grid-cols-2 gap-1 min-w-0">
+          <select
+            value={hh}
+            onChange={(e) => onTimeChange(`${e.target.value}:${mm}`)}
+            className="w-full px-1.5 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 text-center"
+            aria-label={`${title} 식사 시`}
+          >
+            {HOURS.map((hour) => (
+              <option key={hour} value={hour}>
+                {hour}
+              </option>
+            ))}
+          </select>
+          <select
+            value={mm}
+            onChange={(e) => onTimeChange(`${hh}:${e.target.value}`)}
+            className="w-full px-1.5 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 text-center"
+            aria-label={`${title} 식사 분`}
+          >
+            {MINUTES.map((minute) => (
+              <option key={minute} value={minute}>
+                {minute}
+              </option>
+            ))}
+          </select>
+        </div>
         <input
           type="text"
           value={textValue}
@@ -74,7 +104,7 @@ export default function MealCard({
             }
           }}
           placeholder="예: 장어 1.5마리, 밥 0.3공기, 밑반찬, 제로콜라 1캔"
-          className="px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+          className="min-w-0 w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
           aria-label={`${title} 식사 입력`}
         />
         <button
