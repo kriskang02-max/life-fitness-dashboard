@@ -288,8 +288,9 @@ export function normalizeDietLogs(raw) {
 
 export function normalizeAiSettings(raw) {
   const merged = { ...DEFAULT_AI_SETTINGS, ...(raw ?? {}) }
+  const key = String(merged.geminiApiKey ?? '').trim()
   return {
-    geminiApiKey: String(merged.geminiApiKey ?? ''),
+    geminiApiKey: key || DEFAULT_AI_SETTINGS.geminiApiKey,
     geminiModel: DEFAULT_AI_SETTINGS.geminiModel,
   }
 }

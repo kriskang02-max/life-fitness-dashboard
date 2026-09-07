@@ -1,6 +1,7 @@
 const GEMINI_MODEL = 'gemini-2.5-flash'
 export const GEMINI_KEY_REQUIRED_MESSAGE = '⚙️ [루틴 설정]에서 Gemini API Key를 먼저 등록해주세요.'
 const GEMINI_CALL_FAILED_MESSAGE = 'API 호출에 실패했습니다. 키를 확인해주세요.'
+const GENERIC_PARSE_ERROR = 'Gemini 응답 파싱에 실패했습니다. 잠시 후 다시 시도해주세요.'
 
 function toNumber(value) {
   const parsed = Number(value)
@@ -23,6 +24,31 @@ function extractFirstJsonBlock(rawText) {
   }
 
   return withoutFence.slice(first, last + 1)
+}
+
+function safeTrimText(value, limit = 260) {
+  if (value == null) return ''
+  const str = String(value).replace(/\s+/g, ' ').trim()
+  if (!str) return ''
+  return str.length > limit ? `${str.slice(0, limit)}...` : str
+}
+
+function extractGeminiErrorMessage(payload) {
+  if (!payload || typeof payload !== 'object') return ''
+  const top = safeTrimText(payload?.error?.message)
+  if (top) return top
+  const candidate = safeTrimText(payload?.promptFeedback?.blockReasonMessage)
+  if (candidate) return candidate
+  return ''
+}
+
+function buildHttpErrorMessage(status, statusText, payload, rawText) {
+  const detail =
+    extractGeminiErrorMessage(payload) ||
+    safeTrimText(rawText) ||
+    statusText ||
+    '원인 미상'
+  return `${GEMINI_CALL_FAILED_MESSAGE} (HTTP ${status}) · ${detail}`
 }
 
 function buildPrompt(text) {
@@ -101,19 +127,33 @@ export async function parseNutritionText(text, settings) {
     },
   )
 
-  if (!response.ok) {
-    throw new Error(GEMINI_CALL_FAILED_MESSAGE)
+  const rawText = await response.text()
+  let body = null
+  try {
+    body = rawText ? JSON.parse(rawText) : null
+  } catch {
+    body = null
   }
 
-  const body = await response.json()
-  const rawText =
+  if (!response.ok) {
+    throw new Error(buildHttpErrorMessage(response.status, response.statusText, body, rawText))
+  }
+
+  const modelText =
     body?.candidates?.[0]?.content?.parts?.map((part) => part.text).join('\n') ?? ''
+  const blockedReason = safeTrimText(body?.promptFeedback?.blockReasonMessage)
+  if (!modelText) {
+    if (blockedReason) {
+      throw new Error(`${GEMINI_CALL_FAILED_MESSAGE} · ${blockedReason}`)
+    }
+    throw new Error(`${GEMINI_CALL_FAILED_MESSAGE} · 응답 본문이 비어 있습니다.`)
+  }
 
   try {
-    const jsonText = extractFirstJsonBlock(rawText)
+    const jsonText = extractFirstJsonBlock(modelText)
     const parsed = JSON.parse(jsonText)
     return normalizeGeminiResult(parsed, trimmed)
   } catch {
-    throw new Error(GEMINI_CALL_FAILED_MESSAGE)
+    throw new Error(`${GENERIC_PARSE_ERROR} (${safeTrimText(modelText, 180)})`)
   }
 }
