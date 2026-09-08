@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 export default function PageSwipe({ pages }) {
   const [activeIndex, setActiveIndex] = useState(0)
-  const [touchStartX, setTouchStartX] = useState(null)
+  const [touchStart, setTouchStart] = useState(null)
 
   const safeIndex = Math.max(0, Math.min(activeIndex, pages.length - 1))
 
@@ -12,16 +12,30 @@ export default function PageSwipe({ pages }) {
   }
 
   const onTouchStart = (e) => {
-    setTouchStartX(e.changedTouches?.[0]?.clientX ?? null)
+    const touch = e.changedTouches?.[0]
+    if (!touch) {
+      setTouchStart(null)
+      return
+    }
+    setTouchStart({ x: touch.clientX, y: touch.clientY })
   }
 
   const onTouchEnd = (e) => {
-    const endX = e.changedTouches?.[0]?.clientX
-    if (touchStartX == null || endX == null) return
-    const distance = endX - touchStartX
-    if (Math.abs(distance) < 45) return
-    if (distance < 0) movePage(1)
-    if (distance > 0) movePage(-1)
+    const touch = e.changedTouches?.[0]
+    if (!touchStart || !touch) return
+
+    const distanceX = touch.clientX - touchStart.x
+    const distanceY = touch.clientY - touchStart.y
+    const absX = Math.abs(distanceX)
+    const absY = Math.abs(distanceY)
+
+    // Require an intentional horizontal drag: ~22% of viewport or at least 80px.
+    const threshold = typeof window !== 'undefined' ? Math.max(80, Math.round(window.innerWidth * 0.22)) : 80
+    if (absX < threshold) return
+    if (absX <= absY * 1.15) return
+
+    if (distanceX < 0) movePage(1)
+    if (distanceX > 0) movePage(-1)
   }
 
   return (
