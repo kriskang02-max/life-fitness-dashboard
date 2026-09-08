@@ -48,7 +48,8 @@ function countWorkoutStreak(dailyLogs, today) {
 function countCleanDietStreak(dietLogs, today, calorieGoal) {
   let streak = 0
   let foundTrackedDay = false
-  for (let i = 0; i < 3650; i++) {
+  // Exclude today because the current day is still in-progress.
+  for (let i = 1; i < 3650; i++) {
     const key = formatDateKey(addDays(today, -i))
     const entry = dietLogs?.[key]
     const hasData = getMealsFromEntry(entry).length > 0

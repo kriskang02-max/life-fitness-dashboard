@@ -120,7 +120,7 @@ function buildDaySummary(dateKey, entry, calorieGoal) {
   }
 }
 
-function countCleanStreakFromDate(logs, startDate, calorieGoal) {
+function countCleanStreakFromDate(logs, startDate, calorieGoal, excludedDateKey = null) {
   const base = new Date(startDate)
   base.setHours(0, 0, 0, 0)
 
@@ -129,6 +129,7 @@ function countCleanStreakFromDate(logs, startDate, calorieGoal) {
 
   for (let i = 0; i < 3650; i++) {
     const key = formatDateKey(addDays(base, -i))
+    if (excludedDateKey && key === excludedDateKey) continue
     const summary = buildDaySummary(key, logs?.[key], calorieGoal)
 
     if (!foundTrackedDay) {
@@ -307,6 +308,7 @@ export default function DietNutrition({
   const [slotHints, setSlotHints] = useState({})
 
   const dateKey = formatDateKey(selectedDate)
+  const todayKey = formatDateKey(new Date())
   const normalizedLogs = useMemo(() => ensureDietLog(dietLogs ?? {}, dateKey), [dietLogs, dateKey])
   const currentSlots = normalizedLogs[dateKey]?.slots ?? createEmptyDietSlots()
 
@@ -401,13 +403,18 @@ export default function DietNutrition({
     [trendSummaries],
   )
 
-  const weeklyCleanSuccess = trackedSummaries.filter((day) => day.cleanDay).length
-  const weeklyCleanTotal = trackedSummaries.length
+  const weeklyScoreSummaries = useMemo(
+    () => trackedSummaries.filter((day) => day.dateKey !== todayKey),
+    [trackedSummaries, todayKey],
+  )
+
+  const weeklyCleanSuccess = weeklyScoreSummaries.filter((day) => day.cleanDay).length
+  const weeklyCleanTotal = weeklyScoreSummaries.length
   const weeklyCleanPercent = weeklyCleanTotal ? Math.round((weeklyCleanSuccess / weeklyCleanTotal) * 100) : 0
 
   const cleanStreak = useMemo(
-    () => countCleanStreakFromDate(normalizedLogs, selectedDate, calorieGoal),
-    [selectedDate, normalizedLogs, calorieGoal],
+    () => countCleanStreakFromDate(normalizedLogs, selectedDate, calorieGoal, todayKey),
+    [selectedDate, normalizedLogs, calorieGoal, todayKey],
   )
 
   const avgFastingHours = useMemo(() => {
@@ -468,10 +475,10 @@ export default function DietNutrition({
 
   const proteinAchieveRate = proteinTargetGram > 0 ? (avgProtein / proteinTargetGram) * 100 : 0
   const sugarDefenseRate = weeklyCleanTotal
-    ? (trackedSummaries.filter((day) => day.totals.sugar <= 30).length / weeklyCleanTotal) * 100
+    ? (weeklyScoreSummaries.filter((day) => day.totals.sugar <= 30).length / weeklyCleanTotal) * 100
     : 0
   const sodiumDefenseRate = weeklyCleanTotal
-    ? (trackedSummaries.filter((day) => day.totals.sodium <= SODIUM_DEFENSE_BASELINE).length / weeklyCleanTotal) * 100
+    ? (weeklyScoreSummaries.filter((day) => day.totals.sodium <= SODIUM_DEFENSE_BASELINE).length / weeklyCleanTotal) * 100
     : 0
 
   const updateDraft = (slotKey, field, value) => {
@@ -703,7 +710,7 @@ export default function DietNutrition({
             </div>
 
             <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-3 py-2">
-              <p className="text-[11px] text-zinc-400">주간 클린 식단 스코어</p>
+              <p className="text-[11px] text-zinc-400">주간 클린 식단 스코어 (당일 제외)</p>
               <p className="text-sm font-semibold text-cyan-300 mt-1">
                 {weeklyCleanSuccess} / {weeklyCleanTotal}일 성공 ({weeklyCleanPercent}%)
               </p>
