@@ -1,4 +1,15 @@
-import { STORAGE_KEYS, DEFAULT_DAILY_ITEMS_CONFIG, DEFAULT_GOAL_SETTINGS, DEFAULT_SYNC_SETTINGS, BUILTIN_SUPABASE, DEFAULT_FOCUS_COMPASS_DATA, DEFAULT_MOTIVATION_VIDEOS } from './constants'
+import {
+  STORAGE_KEYS,
+  DEFAULT_DAILY_ITEMS_CONFIG,
+  DEFAULT_GOAL_SETTINGS,
+  DEFAULT_SYNC_SETTINGS,
+  BUILTIN_SUPABASE,
+  DEFAULT_FOCUS_COMPASS_DATA,
+  DEFAULT_MOTIVATION_VIDEOS,
+  DEFAULT_AI_SETTINGS,
+  DEFAULT_NUTRITION_TARGETS,
+  MEAL_SLOT_KEYS,
+} from './constants'
 import { formatDateKey } from './dates'
 
 function generateMockDailyLogs() {
@@ -161,6 +172,42 @@ export function normalizeSyncSettings(raw) {
   }
 }
 
+export function normalizeNutritionTargets(raw) {
+  const fallback = { ...DEFAULT_NUTRITION_TARGETS, macroRatio: { ...DEFAULT_NUTRITION_TARGETS.macroRatio } }
+  const calorieGoal = Number(raw?.calorieGoal)
+  const sugarLimit = Number(raw?.sugarLimit)
+  const sodiumLimit = Number(raw?.sodiumLimit)
+  const macroRaw = raw?.macroRatio ?? {}
+  const carbsRaw = Number(macroRaw.carbs)
+  const proteinRaw = Number(macroRaw.protein)
+  const fatRaw = Number(macroRaw.fat)
+
+  const clamped = {
+    carbs: Number.isFinite(carbsRaw) ? Math.max(0, carbsRaw) : fallback.macroRatio.carbs,
+    protein: Number.isFinite(proteinRaw) ? Math.max(0, proteinRaw) : fallback.macroRatio.protein,
+    fat: Number.isFinite(fatRaw) ? Math.max(0, fatRaw) : fallback.macroRatio.fat,
+  }
+
+  const sum = clamped.carbs + clamped.protein + clamped.fat
+  const macroRatio =
+    sum > 0
+      ? {
+          carbs: Math.round((clamped.carbs / sum) * 100),
+          protein: Math.round((clamped.protein / sum) * 100),
+          fat: 0,
+        }
+      : { ...fallback.macroRatio }
+
+  macroRatio.fat = Math.max(0, 100 - macroRatio.carbs - macroRatio.protein)
+
+  return {
+    calorieGoal: Number.isFinite(calorieGoal) ? Math.max(100, Math.round(calorieGoal)) : fallback.calorieGoal,
+    sugarLimit: Number.isFinite(sugarLimit) ? Math.max(1, Math.round(sugarLimit)) : fallback.sugarLimit,
+    sodiumLimit: Number.isFinite(sodiumLimit) ? Math.max(1, Math.round(sodiumLimit)) : fallback.sodiumLimit,
+    macroRatio,
+  }
+}
+
 export function normalizeFocusCompassData(raw, goalSettings = null) {
   const base = {
     target: { ...DEFAULT_FOCUS_COMPASS_DATA.target },
@@ -199,9 +246,101 @@ export function normalizeMotivationVideos(raw) {
   return { activeVideoId, playlist }
 }
 
+function normalizeMealItems(items) {
+  if (!Array.isArray(items)) return []
+  return items
+    .filter((item) => item?.name)
+    .map((item) => ({
+      name: String(item.name).trim(),
+      amount: String(item.amount ?? '').trim(),
+      calories: Number(item.calories) || 0,
+      protein: Number(item.protein) || 0,
+      carbs: Number(item.carbs) || 0,
+      fat: Number(item.fat) || 0,
+      sugar: Number(item.sugar) || 0,
+      sodium: Number(item.sodium) || 0,
+    }))
+}
+
+export function createEmptyDietSlots() {
+  return MEAL_SLOT_KEYS.reduce((acc, key) => {
+    acc[key] = null
+    return acc
+  }, {})
+}
+
+function normalizeMealLog(entry) {
+  const items = normalizeMealItems(entry?.items)
+  const totals = {
+    calories: Number(entry?.totals?.calories) || items.reduce((sum, item) => sum + (item.calories || 0), 0),
+    protein: Number(entry?.totals?.protein) || items.reduce((sum, item) => sum + (item.protein || 0), 0),
+    carbs: Number(entry?.totals?.carbs) || items.reduce((sum, item) => sum + (item.carbs || 0), 0),
+    fat: Number(entry?.totals?.fat) || items.reduce((sum, item) => sum + (item.fat || 0), 0),
+    sugar: Number(entry?.totals?.sugar) || items.reduce((sum, item) => sum + (item.sugar || 0), 0),
+    sodium: Number(entry?.totals?.sodium) || items.reduce((sum, item) => sum + (item.sodium || 0), 0),
+  }
+
+  return {
+    id: String(entry?.id ?? createMeasurementId('meal')),
+    slot: entry?.slot ? String(entry.slot) : null,
+    time: String(entry?.time ?? ''),
+    text: String(entry?.text ?? '').trim(),
+    summary: String(entry?.summary ?? entry?.text ?? '').trim(),
+    provider: 'gemini',
+    model: DEFAULT_AI_SETTINGS.geminiModel,
+    confidence: Number(entry?.confidence) || 0,
+    createdAt: String(entry?.createdAt ?? new Date().toISOString()),
+    items,
+    totals,
+  }
+}
+
+export function normalizeDietLogs(raw) {
+  if (!raw || typeof raw !== 'object') return {}
+  const normalized = {}
+  for (const [dateKey, value] of Object.entries(raw)) {
+    const slots = createEmptyDietSlots()
+
+    if (value?.slots && typeof value.slots === 'object') {
+      for (const slotKey of MEAL_SLOT_KEYS) {
+        const rawSlot = value.slots[slotKey]
+        if (!rawSlot) continue
+        const meal = normalizeMealLog({ ...rawSlot, slot: slotKey })
+        if (meal.items.length > 0 || meal.text) slots[slotKey] = meal
+      }
+    } else if (Array.isArray(value?.meals)) {
+      // Legacy migration: map previous meal list to morning→lunch→dinner→snack order.
+      const legacy = value.meals
+        .map(normalizeMealLog)
+        .filter((meal) => meal.items.length > 0 || meal.text)
+
+      for (let i = 0; i < MEAL_SLOT_KEYS.length; i++) {
+        const slotKey = MEAL_SLOT_KEYS[i]
+        const meal = legacy[i]
+        if (!meal) continue
+        slots[slotKey] = { ...meal, slot: slotKey }
+      }
+    }
+
+    normalized[dateKey] = { slots }
+  }
+  return normalized
+}
+
+export function normalizeAiSettings(raw) {
+  const merged = { ...DEFAULT_AI_SETTINGS, ...(raw ?? {}) }
+  const key = String(merged.geminiApiKey ?? '').trim()
+  return {
+    geminiApiKey: key || DEFAULT_AI_SETTINGS.geminiApiKey,
+    geminiModel: DEFAULT_AI_SETTINGS.geminiModel,
+  }
+}
+
 export function getDefaultData() {
   return {
     daily_logs: generateMockDailyLogs(),
+    diet_logs: {},
+    nutrition_targets: normalizeNutritionTargets(null),
     body_measurements: [...DEFAULT_BODY_MEASUREMENTS],
     running_records: [...DEFAULT_RUNNING_RECORDS],
     routine_presets: { ...DEFAULT_ROUTINE_PRESETS },
@@ -210,6 +349,7 @@ export function getDefaultData() {
     focus_compass_data: normalizeFocusCompassData(null),
     motivation_videos: normalizeMotivationVideos(null),
     thought_archive: [...DEFAULT_THOUGHT_ARCHIVE],
+    ai_settings: normalizeAiSettings(null),
     sync_settings: normalizeSyncSettings(null),
   }
 }
@@ -255,6 +395,8 @@ export function loadAllData() {
 
   return {
     daily_logs: readJSON(STORAGE_KEYS.daily_logs, defaults.daily_logs),
+    diet_logs: normalizeDietLogs(readJSON(STORAGE_KEYS.diet_logs, defaults.diet_logs)),
+    nutrition_targets: normalizeNutritionTargets(readJSON(STORAGE_KEYS.nutrition_targets, null)),
     body_measurements: measurements.body_measurements,
     running_records: measurements.running_records,
     routine_presets: normalizeWeekdays(readJSON(STORAGE_KEYS.routine_presets, null)),
@@ -263,12 +405,15 @@ export function loadAllData() {
     focus_compass_data: normalizeFocusCompassData(focusRaw, goalSettings),
     motivation_videos: normalizeMotivationVideos(readJSON(STORAGE_KEYS.motivation_videos, null)),
     thought_archive: readJSON(STORAGE_KEYS.thought_archive, defaults.thought_archive),
+    ai_settings: normalizeAiSettings(readJSON(STORAGE_KEYS.ai_settings, null)),
     sync_settings: normalizeSyncSettings(readJSON(STORAGE_KEYS.sync_settings, null)),
   }
 }
 
 export function saveAllData(data) {
   saveDailyLogs(data.daily_logs)
+  saveDietLogs(data.diet_logs)
+  saveNutritionTargets(data.nutrition_targets)
   saveBodyMeasurements(data.body_measurements)
   saveRunningRecords(data.running_records)
   saveRoutinePresets(data.routine_presets)
@@ -277,11 +422,20 @@ export function saveAllData(data) {
   saveFocusCompassData(data.focus_compass_data)
   saveMotivationVideos(data.motivation_videos)
   saveThoughtArchive(data.thought_archive)
+  saveAiSettings(data.ai_settings)
   if (data.sync_settings) saveSyncSettings(data.sync_settings)
 }
 
 export function saveDailyLogs(logs) {
   writeJSON(STORAGE_KEYS.daily_logs, logs)
+}
+
+export function saveDietLogs(logs) {
+  writeJSON(STORAGE_KEYS.diet_logs, normalizeDietLogs(logs))
+}
+
+export function saveNutritionTargets(targets) {
+  writeJSON(STORAGE_KEYS.nutrition_targets, normalizeNutritionTargets(targets))
 }
 
 export function saveBodyMeasurements(items) {
@@ -321,6 +475,10 @@ export function saveThoughtArchive(archive) {
   writeJSON(STORAGE_KEYS.thought_archive, archive)
 }
 
+export function saveAiSettings(settings) {
+  writeJSON(STORAGE_KEYS.ai_settings, normalizeAiSettings(settings))
+}
+
 export function saveSyncSettings(settings) {
   writeJSON(STORAGE_KEYS.sync_settings, normalizeSyncSettings(settings))
 }
@@ -352,6 +510,8 @@ export function importAllData(data) {
   const measurements = resolveMeasurementData(data)
   const merged = {
     daily_logs: data.daily_logs ?? defaults.daily_logs,
+    diet_logs: normalizeDietLogs(data.diet_logs ?? defaults.diet_logs),
+    nutrition_targets: normalizeNutritionTargets(data.nutrition_targets),
     body_measurements: measurements.body_measurements,
     running_records: measurements.running_records,
     routine_presets: normalizeWeekdays(data.routine_presets),
@@ -360,6 +520,7 @@ export function importAllData(data) {
     focus_compass_data: normalizeFocusCompassData(data.focus_compass_data, data.goal_settings),
     motivation_videos: normalizeMotivationVideos(data.motivation_videos),
     thought_archive: data.thought_archive ?? defaults.thought_archive,
+    ai_settings: normalizeAiSettings(data.ai_settings),
     sync_settings: normalizeSyncSettings(data.sync_settings),
   }
   saveAllData(merged)
@@ -409,6 +570,26 @@ export function ensureDailyLog(logs, dateKey) {
     }
   }
   return logs
+}
+
+export function ensureDietLog(logs, dateKey) {
+  const target = logs?.[dateKey]
+  if (!target || !target.slots) {
+    return {
+      ...(logs ?? {}),
+      [dateKey]: { slots: createEmptyDietSlots() },
+    }
+  }
+
+  const mergedSlots = {
+    ...createEmptyDietSlots(),
+    ...target.slots,
+  }
+
+  return {
+    ...(logs ?? {}),
+    [dateKey]: { ...target, slots: mergedSlots },
+  }
 }
 
 export function ensureTodayLog(logs) {

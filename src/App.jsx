@@ -5,6 +5,8 @@ import DailyActions from './components/DailyActions'
 import WeeklyEngine from './components/WeeklyEngine'
 import MonthlyArchive from './components/MonthlyArchive'
 import MotivationTube from './components/MotivationTube'
+import DietNutrition from './components/DietNutrition'
+import PageSwipe from './components/PageSwipe'
 import RoutineSettingsModal from './components/modals/RoutineSettingsModal'
 import SyncSettingsModal from './components/modals/SyncSettingsModal'
 import BodyMeasurementModal from './components/modals/BodyMeasurementModal'
@@ -22,6 +24,8 @@ export default function App() {
     syncStatus,
     syncMessage,
     updateDailyLogs,
+    updateDietLogs,
+    updateNutritionTargets,
     updateBodyMeasurements,
     updateRunningRecords,
     updateRoutinePresets,
@@ -29,6 +33,7 @@ export default function App() {
     updateFocusCompassData,
     updateMotivationVideos,
     updateThoughtArchive,
+    updateAiSettings,
     updateSyncSettings,
     refresh,
     pullRemote,
@@ -189,56 +194,84 @@ export default function App() {
       <div className="max-w-7xl mx-auto w-full max-w-full px-4 py-6 md:py-8 space-y-6 md:space-y-8 overflow-x-hidden">
         <Header
           dailyLogs={data.daily_logs}
+          dietLogs={data.diet_logs}
+          nutritionTargets={data.nutrition_targets}
           syncStatus={syncStatus}
           onOpenRoutine={() => setRoutineOpen(true)}
           onOpenBackup={() => setBackupOpen(true)}
           onOpenSync={() => setSyncOpen(true)}
         />
 
-        <FocusCompass
-          data={data.focus_compass_data}
-          onUpdate={updateFocusCompassData}
-          insightPinFlash={insightPinFlash}
-        />
+        <PageSwipe
+          pages={[
+            {
+              key: 'dashboard',
+              title: 'Dashboard',
+              content: (
+                <div className="space-y-6 md:space-y-8">
+                  <FocusCompass
+                    data={data.focus_compass_data}
+                    onUpdate={updateFocusCompassData}
+                    insightPinFlash={insightPinFlash}
+                  />
 
-        <DailyActions
-          dailyLogs={data.daily_logs}
-          routinePresets={data.routine_presets}
-          dailyItemsConfig={data.daily_items_config}
-          selectedDate={selectedDate}
-          onDateChange={setSelectedDate}
-          onToggle={handleToggle}
-          onUpdateLabel={handleUpdateLabel}
-        />
+                  <DailyActions
+                    dailyLogs={data.daily_logs}
+                    routinePresets={data.routine_presets}
+                    dailyItemsConfig={data.daily_items_config}
+                    selectedDate={selectedDate}
+                    onDateChange={setSelectedDate}
+                    onToggle={handleToggle}
+                    onUpdateLabel={handleUpdateLabel}
+                  />
 
-        <WeeklyEngine
-          bodyMeasurements={data.body_measurements}
-          runningRecords={data.running_records}
-          dailyLogs={data.daily_logs}
-          onOpenBodyModal={openBodyCreate}
-          onOpenRunningModal={openRunningCreate}
-          onOpenManageModal={() => setMeasureManageOpen(true)}
-        />
+                  <WeeklyEngine
+                    bodyMeasurements={data.body_measurements}
+                    runningRecords={data.running_records}
+                    dailyLogs={data.daily_logs}
+                    onOpenBodyModal={openBodyCreate}
+                    onOpenRunningModal={openRunningCreate}
+                    onOpenManageModal={() => setMeasureManageOpen(true)}
+                  />
 
-        <MonthlyArchive
-          dailyLogs={data.daily_logs}
-          bodyMeasurements={data.body_measurements}
-          runningRecords={data.running_records}
-          thoughtArchive={data.thought_archive}
-          routinePresets={data.routine_presets}
-          dailyItemsConfig={data.daily_items_config}
-          selectedDateKey={selectedDateKey}
-          onSelectDate={handleSelectDateKey}
-          onOpenArchiveModal={openArchiveCreate}
-          onEditArchive={handleEditArchive}
-          onDeleteArchive={handleDeleteArchive}
-          onPinToInsight={handlePinToInsight}
-          pinnedArchiveId={data.focus_compass_data?.insight?.pinnedArchiveId}
-        />
+                  <MonthlyArchive
+                    dailyLogs={data.daily_logs}
+                    bodyMeasurements={data.body_measurements}
+                    runningRecords={data.running_records}
+                    thoughtArchive={data.thought_archive}
+                    routinePresets={data.routine_presets}
+                    dailyItemsConfig={data.daily_items_config}
+                    selectedDateKey={selectedDateKey}
+                    onSelectDate={handleSelectDateKey}
+                    onOpenArchiveModal={openArchiveCreate}
+                    onEditArchive={handleEditArchive}
+                    onDeleteArchive={handleDeleteArchive}
+                    onPinToInsight={handlePinToInsight}
+                    pinnedArchiveId={data.focus_compass_data?.insight?.pinnedArchiveId}
+                  />
 
-        <MotivationTube
-          data={data.motivation_videos}
-          onUpdate={updateMotivationVideos}
+                  <MotivationTube
+                    data={data.motivation_videos}
+                    onUpdate={updateMotivationVideos}
+                  />
+                </div>
+              ),
+            },
+            {
+              key: 'diet',
+              title: 'Diet & Nutrition',
+              content: (
+                <DietNutrition
+                  selectedDate={selectedDate}
+                  onDateChange={setSelectedDate}
+                  dietLogs={data.diet_logs}
+                  aiSettings={data.ai_settings}
+                  nutritionTargets={data.nutrition_targets}
+                  onUpdateDietLogs={updateDietLogs}
+                />
+              ),
+            },
+          ]}
         />
       </div>
 
@@ -247,8 +280,12 @@ export default function App() {
         onClose={() => setRoutineOpen(false)}
         routinePresets={data.routine_presets}
         dailyItemsConfig={data.daily_items_config}
+        aiSettings={data.ai_settings}
+        nutritionTargets={data.nutrition_targets}
         onSaveWeekdays={updateRoutinePresets}
         onSaveDailyItems={updateDailyItemsConfig}
+        onSaveAiSettings={updateAiSettings}
+        onSaveNutritionTargets={updateNutritionTargets}
       />
 
       <SyncSettingsModal

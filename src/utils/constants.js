@@ -1,5 +1,7 @@
 export const STORAGE_KEYS = {
   daily_logs: 'daily_logs',
+  diet_logs: 'diet_logs',
+  nutrition_targets: 'nutrition_targets',
   body_measurements: 'body_measurements',
   running_records: 'running_records',
   /** @deprecated migrated to body_measurements + running_records */
@@ -10,6 +12,7 @@ export const STORAGE_KEYS = {
   thought_archive: 'thought_archive',
   focus_compass_data: 'focus_compass_data',
   motivation_videos: 'motivation_videos',
+  ai_settings: 'ai_settings',
   sync_settings: 'sync_settings',
   sync_meta: 'sync_meta',
 }
@@ -36,6 +39,8 @@ export const DEFAULT_MOTIVATION_VIDEOS = {
 }
 
 export const DAILY_CHECK_KEYS = ['workout', 'diet', 'dopamine', 'read']
+
+export const MEAL_SLOT_KEYS = ['morning', 'lunch', 'dinner', 'snack']
 
 export const DAILY_CHECK_LABELS = {
   workout: '관절 보호 운동',
@@ -106,6 +111,22 @@ export const DEFAULT_SYNC_SETTINGS = {
   ...BUILTIN_SUPABASE,
   gistToken: '',
   gistId: '',
+}
+
+export const DEFAULT_AI_SETTINGS = {
+  geminiApiKey: '',
+  geminiModel: 'gemini-2.5-flash',
+}
+
+export const DEFAULT_NUTRITION_TARGETS = {
+  calorieGoal: 1800,
+  sugarLimit: 30,
+  sodiumLimit: 2000,
+  macroRatio: {
+    carbs: 40,
+    protein: 35,
+    fat: 25,
+  },
 }
 
 /** @deprecated use daily_items_config */
