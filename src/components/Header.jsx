@@ -33,18 +33,31 @@ function isCleanDietDay(entry, calorieGoal) {
 }
 
 function countWorkoutStreak(dailyLogs, today) {
+  const todayKey = formatDateKey(today)
+  const todayWorkedOut = Boolean(dailyLogs?.[todayKey]?.workout)
+
   let streak = 0
-  for (let i = 0; i < 3650; i++) {
+  let foundTrackedDay = false
+
+  // Base streak is calculated from yesterday backward.
+  for (let i = 1; i < 3650; i++) {
     const key = formatDateKey(addDays(today, -i))
-    // Today's workout is optional for streak continuity.
-    if (i === 0 && !dailyLogs?.[key]?.workout) continue
-    if (dailyLogs?.[key]?.workout) {
+    const log = dailyLogs?.[key]
+    const hasWorkoutField = log && typeof log === 'object' && 'workout' in log
+
+    if (!foundTrackedDay) {
+      if (!hasWorkoutField) continue
+      foundTrackedDay = true
+    }
+
+    if (log?.workout) {
       streak += 1
       continue
     }
     break
   }
-  return streak
+
+  return todayWorkedOut ? streak + 1 : streak
 }
 
 function countCleanDietStreak(dietLogs, today, calorieGoal) {
