@@ -36,6 +36,8 @@ function countWorkoutStreak(dailyLogs, today) {
   let streak = 0
   for (let i = 0; i < 3650; i++) {
     const key = formatDateKey(addDays(today, -i))
+    // Today's workout is optional for streak continuity.
+    if (i === 0 && !dailyLogs?.[key]?.workout) continue
     if (dailyLogs?.[key]?.workout) {
       streak += 1
       continue
